@@ -1,0 +1,25 @@
+{
+	"name": "obsidian-standard-site",
+	"version": "0.1.0",
+	"description": "Publish Obsidian notes to ATProto using Standard.site lexicons",
+	"main": "main.js",
+	"type": "module",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"test": "vitest run",
+		"test:watch": "vitest"
+	},
+	"keywords": ["obsidian", "atproto", "standard-site", "publishing"],
+	"license": "MIT",
+	"dependencies": {
+		"@atproto/api": "^0.19.0",
+		"obsidian": "^1.12.3"
+	},
+	"devDependencies": {
+		"@types/node": "^25.3.2",
+		"esbuild": "^0.27.3",
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.18"
+	}
+}
