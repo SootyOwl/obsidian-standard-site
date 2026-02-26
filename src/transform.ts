@@ -26,7 +26,7 @@ export function transformObsidianMarkdown(
 	// Resolve wikilinks: [[target|display]] or [[target]]
 	result = result.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_match, target, display) => {
 		const resolvedPath = resolveWikilink(target);
-		const text = display || target;
+		const text = display || target.split("/").pop() || target;
 		if (resolvedPath) {
 			return `[${text}](${resolvedPath})`;
 		}

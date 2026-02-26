@@ -78,4 +78,52 @@ describe("transformObsidianMarkdown", () => {
 			expect(transformObsidianMarkdown(input, noopResolver)).toBe(input);
 		});
 	});
+
+	describe("wikilinks", () => {
+		const resolver = (target: string) => {
+			const published: Record<string, string> = {
+				"My Other Post": "/blog/my-other-post",
+				"recipes/Pasta": "/recipes/pasta",
+			};
+			return published[target] ?? null;
+		};
+
+		it("resolves published wikilinks to markdown links", () => {
+			const input = "Check out [[My Other Post]]";
+			expect(transformObsidianMarkdown(input, resolver)).toBe(
+				"Check out [My Other Post](/blog/my-other-post)"
+			);
+		});
+
+		it("resolves wikilinks with display text", () => {
+			const input = "Check out [[My Other Post|this post]]";
+			expect(transformObsidianMarkdown(input, resolver)).toBe(
+				"Check out [this post](/blog/my-other-post)"
+			);
+		});
+
+		it("converts unpublished wikilinks to plain text", () => {
+			const input = "See [[Unpublished Draft]]";
+			expect(transformObsidianMarkdown(input, resolver)).toBe("See Unpublished Draft");
+		});
+
+		it("converts unpublished wikilinks with display text to plain text", () => {
+			const input = "See [[Unpublished Draft|my draft]]";
+			expect(transformObsidianMarkdown(input, resolver)).toBe("See my draft");
+		});
+
+		it("resolves subpath wikilinks", () => {
+			const input = "Make [[recipes/Pasta]]";
+			expect(transformObsidianMarkdown(input, resolver)).toBe(
+				"Make [Pasta](/recipes/pasta)"
+			);
+		});
+
+		it("handles multiple wikilinks in one line", () => {
+			const input = "[[My Other Post]] and [[Unpublished Draft]]";
+			expect(transformObsidianMarkdown(input, resolver)).toBe(
+				"[My Other Post](/blog/my-other-post) and Unpublished Draft"
+			);
+		});
+	});
 });
