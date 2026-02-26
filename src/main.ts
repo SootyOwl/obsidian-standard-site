@@ -9,6 +9,7 @@ import { prepareNoteForPublish, extractRkeyFromUri } from "./publish";
 import { computeSyncDiff, type VaultNote, type PdsRecord } from "./sync";
 import { deriveDocumentPath } from "./paths";
 import type { NoteFrontmatter, PublicationRecord } from "./types";
+import { buildNoteFromRecord } from "./pull";
 
 export default class StandardSitePlugin extends Plugin {
 	settings: StandardSiteSettings = DEFAULT_SETTINGS;
@@ -326,6 +327,48 @@ export default class StandardSitePlugin extends Plugin {
 			}
 			for (const note of diff.toCreate) {
 				console.log(`Untracked in vault: ${note.filePath}`);
+			}
+
+			// Pull orphans into vault
+			if (diff.orphans.length > 0) {
+				const pullRoot = this.settings.pullFolder || this.settings.publishRoot || "";
+				let pulled = 0;
+				let skipped = 0;
+
+				for (const orphan of diff.orphans) {
+					const { frontmatter, body, relativePath } = buildNoteFromRecord({
+						rkey: orphan.rkey,
+						value: orphan.value,
+					});
+
+					const fullPath = pullRoot ? `${pullRoot}/${relativePath}` : relativePath;
+
+					// Check if file already exists
+					const existing = this.app.vault.getAbstractFileByPath(fullPath);
+					if (existing) {
+						console.log(`Skipping pull (file exists): ${fullPath}`);
+						skipped++;
+						continue;
+					}
+
+					// Ensure parent directory exists
+					const dir = fullPath.substring(0, fullPath.lastIndexOf("/"));
+					if (dir) {
+						try {
+							await this.app.vault.createFolder(dir);
+						} catch {
+							// Folder may already exist
+						}
+					}
+
+					const noteContent = `${frontmatter}\n\n${body}`;
+					await this.app.vault.create(fullPath, noteContent);
+					pulled++;
+				}
+
+				if (pulled > 0 || skipped > 0) {
+					new Notice(`Pulled ${pulled} notes from ATProto (${skipped} skipped — already exist)`);
+				}
 			}
 		} catch (e: any) {
 			new Notice(`Sync from ATProto failed: ${e.message}`);
