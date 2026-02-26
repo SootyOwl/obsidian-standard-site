@@ -32,7 +32,7 @@ export class StandardSiteClient {
 			repo: this.did,
 			collection: "site.standard.publication",
 			rkey: "self",
-			record,
+			record: record as unknown as Record<string, unknown>,
 		});
 		return { uri: response.data.uri, cid: response.data.cid };
 	}
@@ -54,7 +54,7 @@ export class StandardSiteClient {
 		const response = await this.agent.com.atproto.repo.createRecord({
 			repo: this.did,
 			collection: "site.standard.document",
-			record,
+			record: record as unknown as Record<string, unknown>,
 		});
 		return { uri: response.data.uri, cid: response.data.cid };
 	}
@@ -64,7 +64,7 @@ export class StandardSiteClient {
 			repo: this.did,
 			collection: "site.standard.document",
 			rkey,
-			record,
+			record: record as unknown as Record<string, unknown>,
 		});
 		return { uri: response.data.uri, cid: response.data.cid };
 	}
@@ -116,6 +116,6 @@ export class StandardSiteClient {
 
 	extractRkey(uri: string): string {
 		const parts = uri.split("/");
-		return parts[parts.length - 1];
+		return parts[parts.length - 1]!;
 	}
 }

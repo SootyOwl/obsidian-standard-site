@@ -66,5 +66,5 @@ export function prepareNoteForPublish(input: PrepareInput): PrepareResult {
 
 export function extractRkeyFromUri(uri: string): string {
 	const parts = uri.split("/");
-	return parts[parts.length - 1];
+	return parts[parts.length - 1]!;
 }
