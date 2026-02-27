@@ -148,3 +148,44 @@ if [ -z "$PUBLICATIONS" ]; then
 fi
 
 PUB_COUNT=$(echo "$PUBLICATIONS" | wc -l | tr -d ' ')
+
+# Select publication
+if [ "$PUB_COUNT" -eq 1 ]; then
+  RKEY=$(echo "$PUBLICATIONS" | head -1 | cut -f1)
+  PUB_NAME=$(echo "$PUBLICATIONS" | head -1 | cut -f2)
+  printf "Found publication: %s (rkey: %s)\n" "$PUB_NAME" "$RKEY"
+else
+  echo "Publications:"
+  I=1
+  while IFS=$'\t' read -r rkey name; do
+    printf "  %d. %s (rkey: %s)\n" "$I" "$name" "$rkey"
+    I=$((I + 1))
+  done <<< "$PUBLICATIONS"
+  echo ""
+  printf "Select publication [1]: "
+  read -r CHOICE
+  CHOICE="${CHOICE:-1}"
+  RKEY=$(echo "$PUBLICATIONS" | sed -n "${CHOICE}p" | cut -f1)
+  PUB_NAME=$(echo "$PUBLICATIONS" | sed -n "${CHOICE}p" | cut -f2)
+  [ -z "$RKEY" ] && die "Invalid selection."
+fi
+
+# Patch index.html
+sed -i "s/const HANDLE = \".*\";/const HANDLE = \"${HANDLE}\";/" index.html
+sed -i "s/const PUBLICATION_RKEY = \".*\";/const PUBLICATION_RKEY = \"${RKEY}\";/" index.html
+info "Updated index.html"
+
+# Patch .well-known/site.standard.publication
+printf "at://%s/site.standard.publication/%s\n" "$DID" "$RKEY" > .well-known/site.standard.publication
+info "Updated .well-known/site.standard.publication"
+
+echo ""
+info "Setup complete!"
+echo ""
+echo "  Deploy this directory to any static host:"
+echo "  GitHub Pages, Cloudflare Pages, Netlify, etc."
+echo ""
+echo "  Files:"
+echo "    index.html"
+echo "    .well-known/site.standard.publication"
+echo ""
