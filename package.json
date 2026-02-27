@@ -1,5 +1,5 @@
 {
-	"name": "obsidian-standard-site",
+	"name": "standard-site-publisher",
 	"version": "0.1.0",
 	"description": "Publish Obsidian notes to ATProto using Standard.site lexicons",
 	"main": "main.js",
