@@ -59,7 +59,7 @@ describe("StandardSiteClient", () => {
 		it("calls createRecord with correct collection and record", async () => {
 			const doc: DocumentRecord = {
 				$type: "site.standard.document",
-				site: "at://did:plc:testuser123/site.standard.publication/self",
+				site: "at://did:plc:testuser123/site.standard.publication/3mc7ts3zshc2y",
 				title: "Test Post",
 				path: "/test-post",
 				publishedAt: "2026-02-26T12:00:00.000Z",
@@ -86,7 +86,7 @@ describe("StandardSiteClient", () => {
 		it("calls putRecord with rkey", async () => {
 			const doc: DocumentRecord = {
 				$type: "site.standard.document",
-				site: "at://did:plc:testuser123/site.standard.publication/self",
+				site: "at://did:plc:testuser123/site.standard.publication/3mc7ts3zshc2y",
 				title: "Updated Post",
 				path: "/test-post",
 				publishedAt: "2026-02-26T12:00:00.000Z",
@@ -139,6 +139,73 @@ describe("StandardSiteClient", () => {
 			const records = await client.listDocuments();
 			expect(records).toHaveLength(1);
 			expect(records[0].value.title).toBe("Post 1");
+		});
+	});
+
+	describe("createPublication", () => {
+		it("calls createRecord without rkey", async () => {
+			const pub: PublicationRecord = {
+				$type: "site.standard.publication",
+				url: "https://example.com",
+				name: "My Blog",
+			};
+
+			mockAgent.com.atproto.repo.createRecord.mockResolvedValue({
+				data: { uri: "at://did:plc:testuser123/site.standard.publication/3mc7ts3zshc2y", cid: "cidpub1" },
+			});
+
+			const result = await client.createPublication(pub);
+
+			expect(mockAgent.com.atproto.repo.createRecord).toHaveBeenCalledWith({
+				repo: "did:plc:testuser123",
+				collection: "site.standard.publication",
+				record: pub,
+			});
+			// Verify no rkey was passed
+			const callArgs = mockAgent.com.atproto.repo.createRecord.mock.calls[0][0];
+			expect(callArgs).not.toHaveProperty("rkey");
+			expect(result.uri).toBe("at://did:plc:testuser123/site.standard.publication/3mc7ts3zshc2y");
+		});
+	});
+
+	describe("listPublications", () => {
+		it("returns all publication records with pagination", async () => {
+			mockAgent.com.atproto.repo.listRecords
+				.mockResolvedValueOnce({
+					data: {
+						records: [
+							{
+								uri: "at://did:plc:testuser123/site.standard.publication/3mc7ts3zshc2y",
+								cid: "cid1",
+								value: { name: "Blog 1" },
+							},
+						],
+						cursor: "next",
+					},
+				})
+				.mockResolvedValueOnce({
+					data: {
+						records: [
+							{
+								uri: "at://did:plc:testuser123/site.standard.publication/3mc7ts4abcd2z",
+								cid: "cid2",
+								value: { name: "Blog 2" },
+							},
+						],
+						cursor: undefined,
+					},
+				});
+
+			const records = await client.listPublications();
+			expect(records).toHaveLength(2);
+			expect(records[0].value.name).toBe("Blog 1");
+			expect(records[1].value.name).toBe("Blog 2");
+			expect(mockAgent.com.atproto.repo.listRecords).toHaveBeenCalledWith({
+				repo: "did:plc:testuser123",
+				collection: "site.standard.publication",
+				limit: 100,
+				cursor: undefined,
+			});
 		});
 	});
 

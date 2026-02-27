@@ -31,23 +31,46 @@ export class StandardSiteClient {
 		const response = await this.agent.com.atproto.repo.createRecord({
 			repo: this.did,
 			collection: "site.standard.publication",
-			rkey: "self",
 			record: record as unknown as Record<string, unknown>,
 		});
 		return { uri: response.data.uri, cid: response.data.cid };
 	}
 
-	async getPublication(): Promise<ListedRecord | null> {
+	async getPublication(rkey: string): Promise<ListedRecord | null> {
 		try {
 			const response = await this.agent.com.atproto.repo.getRecord({
 				repo: this.did,
 				collection: "site.standard.publication",
-				rkey: "self",
+				rkey,
 			});
 			return { uri: response.data.uri, cid: response.data.cid!, value: response.data.value };
 		} catch {
 			return null;
 		}
+	}
+
+	async listPublications(): Promise<ListedRecord[]> {
+		const allRecords: ListedRecord[] = [];
+		let cursor: string | undefined;
+
+		do {
+			const response = await this.agent.com.atproto.repo.listRecords({
+				repo: this.did,
+				collection: "site.standard.publication",
+				limit: 100,
+				cursor,
+			});
+			for (const record of response.data.records) {
+				allRecords.push({
+					uri: record.uri,
+					cid: record.cid,
+					value: record.value,
+				});
+			}
+			cursor = response.data.cursor;
+		} while (cursor);
+
+		return allRecords;
 	}
 
 	async createDocument(record: DocumentRecord): Promise<RecordRef> {
