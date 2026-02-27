@@ -15,7 +15,7 @@ Notes become `site.standard.document` records on your Personal Data Server (PDS)
 
 ## Installation
 
-1. Clone this repo into your vault's `.obsidian/plugins/obsidian-standard-site/` directory
+1. Clone this repo into your vault's `.obsidian/plugins/standard-site-publisher/` directory
 2. `npm install`
 3. `npm run build`
 4. Enable the plugin in Obsidian → Settings → Community Plugins
@@ -66,7 +66,7 @@ The `viewer/` directory contains a zero-dependency static HTML site that renders
 
 ```bash
 mkdir my-site && cd my-site
-curl -fsSL https://raw.githubusercontent.com/SootyOwl/obsidian-standard-site/main/viewer/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/SootyOwl/standard-site-publisher/main/viewer/setup.sh | bash
 ```
 
 The script downloads the viewer files, prompts for your handle, resolves your DID, lists your publications, and configures everything automatically.
@@ -81,6 +81,18 @@ Host the resulting directory on any static host (GitHub Pages, Cloudflare Pages,
 - Inter-note link resolution
 - Custom theming via `custom.css`
 - 5-minute session cache with manual refresh
+
+## Network and data disclosure
+
+This section is provided per Obsidian's developer policies to disclose how the plugin uses network requests and handles credentials.
+
+**Network requests.** The plugin connects to your configured ATProto Personal Data Server (PDS) to publish, update, unpublish, and sync notes. All network traffic goes exclusively to the PDS. The default PDS is `https://bsky.social`, but you can configure any PDS URL in the plugin settings.
+
+**Authentication.** An ATProto handle and app password are required. App passwords can be generated at <https://bsky.app/settings/app-passwords>. The plugin uses these credentials solely to authenticate with your configured PDS.
+
+**Credential storage.** Your handle and app password are stored in the plugin's `data.json` file within your vault's `.obsidian/plugins/standard-site-publisher/` directory. This is Obsidian's standard local plugin storage mechanism. Credentials are never transmitted to any service other than the configured PDS.
+
+**No telemetry.** The plugin does not collect analytics, telemetry, or tracking data of any kind.
 
 ## Development
 
