@@ -34,7 +34,7 @@ export function prepareNoteForPublish(input: PrepareInput): PrepareResult {
 	const path = deriveDocumentPath(filePath, config.publishRoot, frontmatter.slug);
 
 	// Transform markdown
-	const transformedMarkdown = transformObsidianMarkdown(body, resolveWikilink);
+	const { text: transformedMarkdown, references } = transformObsidianMarkdown(body, resolveWikilink);
 
 	// Extract plain text from transformed markdown
 	const plainText = markdownToPlainText(transformedMarkdown);
@@ -55,6 +55,7 @@ export function prepareNoteForPublish(input: PrepareInput): PrepareResult {
 		updatedAt,
 		markdown: transformedMarkdown,
 		plainText,
+		references,
 	});
 
 	return {

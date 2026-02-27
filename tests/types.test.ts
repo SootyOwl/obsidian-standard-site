@@ -62,4 +62,51 @@ describe("buildDocumentRecord", () => {
 
 		expect(record.updatedAt).toBe("2026-02-27T12:00:00.000Z");
 	});
+
+	it("includes references when provided", () => {
+		const record = buildDocumentRecord({
+			siteUri: "at://did:plc:abc123/site.standard.publication/self",
+			title: "Post with refs",
+			path: "/refs",
+			publishedAt: "2026-02-26T12:00:00.000Z",
+			markdown: "Content",
+			plainText: "Content",
+			references: [
+				{ uri: "at://did:plc:abc/site.standard.document/aaa" },
+				{ uri: "at://did:plc:abc/site.standard.document/bbb" },
+			],
+		});
+
+		expect(record.references).toEqual([
+			{ uri: "at://did:plc:abc/site.standard.document/aaa" },
+			{ uri: "at://did:plc:abc/site.standard.document/bbb" },
+		]);
+	});
+
+	it("omits references when empty array", () => {
+		const record = buildDocumentRecord({
+			siteUri: "at://did:plc:abc123/site.standard.publication/self",
+			title: "No refs",
+			path: "/no-refs",
+			publishedAt: "2026-02-26T12:00:00.000Z",
+			markdown: "Content",
+			plainText: "Content",
+			references: [],
+		});
+
+		expect(record.references).toBeUndefined();
+	});
+
+	it("omits references when not provided", () => {
+		const record = buildDocumentRecord({
+			siteUri: "at://did:plc:abc123/site.standard.publication/self",
+			title: "No refs",
+			path: "/no-refs",
+			publishedAt: "2026-02-26T12:00:00.000Z",
+			markdown: "Content",
+			plainText: "Content",
+		});
+
+		expect(record.references).toBeUndefined();
+	});
 });

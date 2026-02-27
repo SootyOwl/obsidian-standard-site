@@ -19,6 +19,7 @@ export interface DocumentRecord {
 	content?: MarkpubMarkdown;
 	coverImage?: unknown;
 	bskyPostRef?: unknown;
+	references?: Array<{ uri: string }>;
 }
 
 export interface PublicationRecord {
@@ -52,6 +53,7 @@ export interface DocumentInput {
 	updatedAt?: string;
 	markdown: string;
 	plainText: string;
+	references?: Array<{ uri: string }>;
 }
 
 export function buildDocumentRecord(input: DocumentInput): DocumentRecord {
@@ -77,6 +79,9 @@ export function buildDocumentRecord(input: DocumentInput): DocumentRecord {
 	}
 	if (input.updatedAt) {
 		record.updatedAt = input.updatedAt;
+	}
+	if (input.references && input.references.length > 0) {
+		record.references = input.references;
 	}
 
 	return record;
