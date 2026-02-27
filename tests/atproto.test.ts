@@ -169,6 +169,30 @@ describe("StandardSiteClient", () => {
 		});
 	});
 
+	describe("updatePublication", () => {
+		it("calls putRecord with rkey and updated record", async () => {
+			const pub: PublicationRecord = {
+				$type: "site.standard.publication",
+				url: "https://myblog.example.com",
+				name: "My Blog",
+			};
+
+			mockAgent.com.atproto.repo.putRecord.mockResolvedValue({
+				data: { uri: "at://did:plc:testuser123/site.standard.publication/3mc7ts3zshc2y", cid: "cidpub2" },
+			});
+
+			const result = await client.updatePublication("3mc7ts3zshc2y", pub);
+
+			expect(mockAgent.com.atproto.repo.putRecord).toHaveBeenCalledWith({
+				repo: "did:plc:testuser123",
+				collection: "site.standard.publication",
+				rkey: "3mc7ts3zshc2y",
+				record: pub,
+			});
+			expect(result.uri).toBe("at://did:plc:testuser123/site.standard.publication/3mc7ts3zshc2y");
+		});
+	});
+
 	describe("listPublications", () => {
 		it("returns all publication records with pagination", async () => {
 			mockAgent.com.atproto.repo.listRecords

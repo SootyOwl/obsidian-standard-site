@@ -8,7 +8,7 @@ import { StandardSiteClient } from "./atproto";
 import { prepareNoteForPublish, extractRkeyFromUri } from "./publish";
 import { computeSyncDiff, type VaultNote, type PdsRecord } from "./sync";
 import { deriveDocumentPath } from "./paths";
-import type { NoteFrontmatter, BlobRef } from "./types";
+import type { NoteFrontmatter, PublicationRecord, BlobRef } from "./types";
 import type { WikilinkResolver, ResolvedWikilink } from "./transform";
 import { buildNoteFromRecord } from "./pull";
 
@@ -112,6 +112,21 @@ export default class StandardSitePlugin extends Plugin {
 		throw new Error("Please select a publication in settings");
 	}
 
+	private async syncPublicationUrl(client: StandardSiteClient) {
+		if (!this.settings.publicationUrl || !this.settings.publicationUri) return;
+		const rkey = extractRkeyFromUri(this.settings.publicationUri);
+		const existing = await client.getPublication(rkey);
+		if (!existing) return;
+		if (existing.value.url !== this.settings.publicationUrl) {
+			const updatedRecord: PublicationRecord = {
+				...existing.value,
+				$type: "site.standard.publication",
+				url: this.settings.publicationUrl,
+			};
+			await client.updatePublication(rkey, updatedRecord);
+		}
+	}
+
 	private buildWikilinkResolver(did: string): WikilinkResolver {
 		return (target: string): ResolvedWikilink | null => {
 			const destFile = this.app.metadataCache.getFirstLinkpathDest(target, "");
@@ -159,6 +174,7 @@ export default class StandardSitePlugin extends Plugin {
 		try {
 			const client = await this.getClient();
 			const siteUri = await this.ensurePublication();
+			await this.syncPublicationUrl(client);
 
 			const content = await this.app.vault.read(file);
 			const cache = this.app.metadataCache.getFileCache(file);
@@ -248,6 +264,7 @@ export default class StandardSitePlugin extends Plugin {
 		try {
 			const client = await this.getClient();
 			const siteUri = await this.ensurePublication();
+			await this.syncPublicationUrl(client);
 
 			const files = this.app.vault.getMarkdownFiles();
 			let created = 0;
