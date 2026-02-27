@@ -94,8 +94,18 @@ body {
 .post-item a {
   color: var(--text);
   text-decoration: none;
-  display: block;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
 }
+.post-item .post-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.post-item .post-body { flex: 1; min-width: 0; }
 .post-item a:hover .post-title { color: var(--link); }
 .post-title {
   font-size: 1.2rem;
@@ -629,11 +639,18 @@ function showHomepage(publication, documents, did) {
 
       const li = el("li", { className: "post-item" });
       const a = el("a", { href });
-      a.appendChild(el("div", { className: "post-title" }, title));
-      if (v.publishedAt) a.appendChild(el("div", { className: "post-meta" }, formatDate(v.publishedAt)));
-      if (v.description) a.appendChild(el("div", { className: "post-description" }, v.description));
+      const body = el("div", { className: "post-body" });
+      body.appendChild(el("div", { className: "post-title" }, title));
+      if (v.publishedAt) body.appendChild(el("div", { className: "post-meta" }, formatDate(v.publishedAt)));
+      if (v.description) body.appendChild(el("div", { className: "post-description" }, v.description));
       const tags = renderTags(v.tags);
-      if (tags) a.appendChild(tags);
+      if (tags) body.appendChild(tags);
+      a.appendChild(body);
+      if (v.coverImage && v.coverImage.ref) {
+        const cid = v.coverImage.ref.$link;
+        const thumbUrl = `${appState.pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`;
+        a.appendChild(el("img", { src: thumbUrl, className: "post-thumb", alt: "" }));
+      }
       li.appendChild(a);
       ul.appendChild(li);
     }
