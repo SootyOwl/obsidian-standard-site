@@ -9,6 +9,7 @@ import { prepareNoteForPublish, extractRkeyFromUri } from "./publish";
 import { computeSyncDiff, type VaultNote, type PdsRecord } from "./sync";
 import { deriveDocumentPath } from "./paths";
 import type { NoteFrontmatter, BlobRef } from "./types";
+import type { WikilinkResolver, ResolvedWikilink } from "./transform";
 import { buildNoteFromRecord } from "./pull";
 
 export default class StandardSitePlugin extends Plugin {
@@ -111,8 +112,8 @@ export default class StandardSitePlugin extends Plugin {
 		throw new Error("Please select a publication in settings");
 	}
 
-	private buildWikilinkResolver(): (target: string) => string | null {
-		return (target: string) => {
+	private buildWikilinkResolver(did: string): WikilinkResolver {
+		return (target: string): ResolvedWikilink | null => {
 			const destFile = this.app.metadataCache.getFirstLinkpathDest(target, "");
 			if (!destFile) return null;
 
@@ -120,7 +121,12 @@ export default class StandardSitePlugin extends Plugin {
 			const frontmatter = cache?.frontmatter as NoteFrontmatter | undefined;
 			if (!frontmatter?.publish) return null;
 
-			return deriveDocumentPath(destFile.path, this.settings.publishRoot, frontmatter.slug);
+			const path = deriveDocumentPath(destFile.path, this.settings.publishRoot, frontmatter.slug);
+			const uri = frontmatter.rkey
+				? `at://${did}/site.standard.document/${frontmatter.rkey}`
+				: undefined;
+
+			return { path, uri };
 		};
 	}
 
@@ -186,7 +192,7 @@ export default class StandardSitePlugin extends Plugin {
 				frontmatter,
 				body,
 				config: { siteUri, publishRoot: this.settings.publishRoot },
-				resolveWikilink: this.buildWikilinkResolver(),
+				resolveWikilink: this.buildWikilinkResolver(client.did),
 				existingPublishedAt,
 				coverImage,
 			});
@@ -277,7 +283,7 @@ export default class StandardSitePlugin extends Plugin {
 						frontmatter,
 						body,
 						config: { siteUri, publishRoot: this.settings.publishRoot },
-						resolveWikilink: this.buildWikilinkResolver(),
+						resolveWikilink: this.buildWikilinkResolver(client.did),
 						existingPublishedAt,
 						coverImage,
 					});

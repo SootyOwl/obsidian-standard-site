@@ -26,6 +26,7 @@ export interface DocumentRecord {
 	content?: MarkpubMarkdown;
 	coverImage?: BlobRef;
 	bskyPostRef?: unknown;
+	references?: Array<{ uri: string }>;
 }
 
 export interface PublicationRecord {
@@ -61,6 +62,7 @@ export interface DocumentInput {
 	markdown: string;
 	plainText: string;
 	coverImage?: BlobRef;
+	references?: Array<{ uri: string }>;
 }
 
 export function buildDocumentRecord(input: DocumentInput): DocumentRecord {
@@ -89,6 +91,8 @@ export function buildDocumentRecord(input: DocumentInput): DocumentRecord {
 	}
 	if (input.coverImage) {
 		record.coverImage = input.coverImage;
+	if (input.references && input.references.length > 0) {
+		record.references = input.references;
 	}
 
 	return record;
