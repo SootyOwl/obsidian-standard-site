@@ -257,17 +257,20 @@ renderer.link = function({ href, title, tokens }) {
   if (href && href.startsWith("/") && !href.includes("://")) {
     href = "#" + href;
   }
+  const safeHref = href || "";
+  const hrefAttr = safeHref ? ` href="${escapeHtml(safeHref)}"` : "";
   const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
   const text = this.parser.parseInline(tokens);
-  return `<a href="${escapeHtml(href)}"${titleAttr}>${text}</a>`;
+  return `<a${hrefAttr}${titleAttr}>${text}</a>`;
 };
 marked.setOptions({ gfm: true, breaks: false, renderer });
 
 // ── Utilities ──────────────────────────────────────────────────
 
 function escapeHtml(str) {
+  if (str == null) return "";
   const div = document.createElement("div");
-  div.textContent = str;
+  div.textContent = String(str);
   return div.innerHTML;
 }
 

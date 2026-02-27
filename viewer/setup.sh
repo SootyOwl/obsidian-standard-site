@@ -54,7 +54,7 @@ for s in doc.get('service', []):
 json_publications() {
   # Output: one line per publication as "rkey<TAB>name"
   if [ "$JSON_CMD" = "jq" ]; then
-    jq -r '.records[] | (.uri | split("/") | last) + "\t" + (.value.name // "(untitled)")'
+    jq -r '(.records // [])[] | (.uri | split("/") | last) + "\t" + (.value.name // "(untitled)")'
   else
     python3 -c "
 import sys, json
@@ -171,8 +171,17 @@ else
 fi
 
 # Patch index.html
-sed "s/const HANDLE = \".*\";/const HANDLE = \"${HANDLE}\";/" index.html > index.html.tmp && mv index.html.tmp index.html
-sed "s/const PUBLICATION_RKEY = \".*\";/const PUBLICATION_RKEY = \"${RKEY}\";/" index.html > index.html.tmp && mv index.html.tmp index.html
+# Escape sed special characters in replacement strings
+HANDLE_ESC="${HANDLE//\\/\\\\}"
+HANDLE_ESC="${HANDLE_ESC//&/\\&}"
+HANDLE_ESC="${HANDLE_ESC//\//\\/}"
+HANDLE_ESC="${HANDLE_ESC//\"/\\\"}"
+RKEY_ESC="${RKEY//\\/\\\\}"
+RKEY_ESC="${RKEY_ESC//&/\\&}"
+RKEY_ESC="${RKEY_ESC//\//\\/}"
+RKEY_ESC="${RKEY_ESC//\"/\\\"}"
+sed "s/const HANDLE = \".*\";/const HANDLE = \"${HANDLE_ESC}\";/" index.html > index.html.tmp && mv index.html.tmp index.html
+sed "s/const PUBLICATION_RKEY = \".*\";/const PUBLICATION_RKEY = \"${RKEY_ESC}\";/" index.html > index.html.tmp && mv index.html.tmp index.html
 info "Updated index.html"
 
 # Patch .well-known/site.standard.publication
