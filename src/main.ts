@@ -8,7 +8,7 @@ import { StandardSiteClient } from "./atproto";
 import { prepareNoteForPublish, extractRkeyFromUri } from "./publish";
 import { computeSyncDiff, type VaultNote, type PdsRecord } from "./sync";
 import { deriveDocumentPath } from "./paths";
-import type { NoteFrontmatter, PublicationRecord } from "./types";
+import type { NoteFrontmatter } from "./types";
 import { buildNoteFromRecord } from "./pull";
 
 export default class StandardSitePlugin extends Plugin {
@@ -100,33 +100,15 @@ export default class StandardSitePlugin extends Plugin {
 
 		const client = await this.getClient();
 
-		// Check for existing publication
-		const existing = await client.getPublication();
-		if (existing) {
-			this.settings.publicationUri = existing.uri;
+		// Auto-select if exactly one exists
+		const publications = await client.listPublications();
+		if (publications.length === 1) {
+			this.settings.publicationUri = publications[0].uri;
 			await this.saveSettings();
-			return existing.uri;
+			return publications[0].uri;
 		}
 
-		// Create new publication
-		if (!this.settings.publicationName) {
-			throw new Error("Please set a publication name in settings");
-		}
-
-		const record: PublicationRecord = {
-			$type: "site.standard.publication",
-			url: this.settings.publicationUrl || `https://bsky.app/profile/${this.settings.handle}`,
-			name: this.settings.publicationName,
-		};
-		if (this.settings.publicationDescription) {
-			record.description = this.settings.publicationDescription;
-		}
-
-		const ref = await client.createPublication(record);
-		this.settings.publicationUri = ref.uri;
-		await this.saveSettings();
-		new Notice(`Publication created: ${this.settings.publicationName}`);
-		return ref.uri;
+		throw new Error("Please select a publication in settings");
 	}
 
 	private buildWikilinkResolver(): (target: string) => string | null {
@@ -292,12 +274,16 @@ export default class StandardSitePlugin extends Plugin {
 	private async syncFromAtproto() {
 		try {
 			const client = await this.getClient();
-			const pdsRecords: PdsRecord[] = (await client.listDocuments()).map((r) => ({
-				uri: r.uri,
-				rkey: client.extractRkey(r.uri),
-				path: r.value.path || "",
-				value: r.value,
-			}));
+			const siteUri = await this.ensurePublication();
+			const allRecords = await client.listDocuments();
+			const pdsRecords: PdsRecord[] = allRecords
+				.filter((r) => r.value.site === siteUri)
+				.map((r) => ({
+					uri: r.uri,
+					rkey: client.extractRkey(r.uri),
+					path: r.value.path || "",
+					value: r.value,
+				}));
 
 			const files = this.app.vault.getMarkdownFiles();
 			const vaultNotes: VaultNote[] = [];

@@ -1,5 +1,6 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type StandardSitePlugin from "./main";
+import { StandardSiteClient } from "./atproto";
 
 export interface StandardSiteSettings {
 	handle: string;
@@ -85,43 +86,7 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 		// Publication section
 		containerEl.createEl("h3", { text: "Publication" });
 
-		new Setting(containerEl)
-			.setName("Publication name")
-			.setDesc("The name of your blog/publication")
-			.addText((text) =>
-				text
-					.setPlaceholder("My Blog")
-					.setValue(this.plugin.settings.publicationName)
-					.onChange(async (value) => {
-						this.plugin.settings.publicationName = value;
-						await this.plugin.saveSettings();
-					})
-			);
-
-		new Setting(containerEl)
-			.setName("Publication description")
-			.setDesc("A short description of your publication (optional)")
-			.addText((text) =>
-				text
-					.setValue(this.plugin.settings.publicationDescription)
-					.onChange(async (value) => {
-						this.plugin.settings.publicationDescription = value;
-						await this.plugin.saveSettings();
-					})
-			);
-
-		new Setting(containerEl)
-			.setName("Publication URL")
-			.setDesc("Your blog URL if you have one (optional)")
-			.addText((text) =>
-				text
-					.setPlaceholder("https://myblog.com")
-					.setValue(this.plugin.settings.publicationUrl)
-					.onChange(async (value) => {
-						this.plugin.settings.publicationUrl = value;
-						await this.plugin.saveSettings();
-					})
-			);
+		this.renderPublicationPicker(containerEl);
 
 		// Vault section
 		containerEl.createEl("h3", { text: "Vault" });
@@ -152,13 +117,89 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 					})
 			);
 
-		// Status
-		if (this.plugin.settings.publicationUri) {
-			containerEl.createEl("h3", { text: "Status" });
-			containerEl.createEl("p", {
-				text: `Publication URI: ${this.plugin.settings.publicationUri}`,
-				cls: "setting-item-description",
-			});
+	}
+
+	private renderPublicationPicker(containerEl: HTMLElement) {
+		const wrapper = containerEl.createDiv();
+		const { handle, appPassword, pdsUrl } = this.plugin.settings;
+
+		if (!handle || !appPassword) {
+			new Setting(wrapper)
+				.setName("Active publication")
+				.setDesc("Set your handle and app password above to load publications.");
+			return;
 		}
+
+		const loadingSetting = new Setting(wrapper)
+			.setName("Active publication")
+			.setDesc("Loading publications...");
+
+		const client = new StandardSiteClient(pdsUrl);
+		client.login(handle, appPassword).then(async () => {
+			const publications = await client.listPublications();
+			wrapper.empty();
+
+			const setting = new Setting(wrapper)
+				.setName("Active publication")
+				.setDesc("Select which publication to publish to");
+
+			setting.addDropdown((dropdown) => {
+				for (const pub of publications) {
+					const rkey = client.extractRkey(pub.uri);
+					dropdown.addOption(pub.uri, pub.value.name || rkey);
+				}
+				dropdown.addOption("__new__", "+ Create new...");
+
+				if (this.plugin.settings.publicationUri) {
+					dropdown.setValue(this.plugin.settings.publicationUri);
+				}
+
+				dropdown.onChange(async (value) => {
+					if (value === "__new__") {
+						newPubWrapper.style.display = "";
+						return;
+					}
+					newPubWrapper.style.display = "none";
+					this.plugin.settings.publicationUri = value;
+					await this.plugin.saveSettings();
+				});
+			});
+
+			// "Create new" inline fields
+			const newPubWrapper = wrapper.createDiv();
+			newPubWrapper.style.display = "none";
+
+			let newName = "";
+			new Setting(newPubWrapper)
+				.setName("New publication name")
+				.addText((text) =>
+					text.setPlaceholder("My Cooking Blog").onChange((v) => { newName = v; })
+				);
+
+			new Setting(newPubWrapper)
+				.addButton((btn) =>
+					btn.setButtonText("Create publication").setCta().onClick(async () => {
+						if (!newName.trim()) return;
+						try {
+							const ref = await client.createPublication({
+								$type: "site.standard.publication",
+								url: this.plugin.settings.publicationUrl ||
+									`https://bsky.app/profile/${this.plugin.settings.handle}`,
+								name: newName.trim(),
+							});
+							this.plugin.settings.publicationUri = ref.uri;
+							await this.plugin.saveSettings();
+							this.display(); // re-render settings
+						} catch (e: any) {
+							console.error("Failed to create publication:", e);
+						}
+					})
+				);
+		}).catch(() => {
+			wrapper.empty();
+			new Setting(wrapper)
+				.setName("Active publication")
+				.setDesc("Could not connect — check your handle and app password.");
+		});
 	}
 }
