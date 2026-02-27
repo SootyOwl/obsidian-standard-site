@@ -102,7 +102,7 @@ info "Downloaded .well-known/site.standard.publication"
 
 # ── Interactive setup ──────────────────────────────────────────
 printf "Enter your Bluesky handle: "
-read -r HANDLE
+read -r HANDLE < /dev/tty
 [ -z "$HANDLE" ] && die "Handle is required."
 
 # Resolve handle → DID
@@ -163,7 +163,7 @@ else
   done <<< "$PUBLICATIONS"
   echo ""
   printf "Select publication [1]: "
-  read -r CHOICE
+  read -r CHOICE < /dev/tty
   CHOICE="${CHOICE:-1}"
   RKEY=$(echo "$PUBLICATIONS" | sed -n "${CHOICE}p" | cut -f1)
   PUB_NAME=$(echo "$PUBLICATIONS" | sed -n "${CHOICE}p" | cut -f2)
@@ -171,8 +171,8 @@ else
 fi
 
 # Patch index.html
-sed -i "s/const HANDLE = \".*\";/const HANDLE = \"${HANDLE}\";/" index.html
-sed -i "s/const PUBLICATION_RKEY = \".*\";/const PUBLICATION_RKEY = \"${RKEY}\";/" index.html
+sed "s/const HANDLE = \".*\";/const HANDLE = \"${HANDLE}\";/" index.html > index.html.tmp && mv index.html.tmp index.html
+sed "s/const PUBLICATION_RKEY = \".*\";/const PUBLICATION_RKEY = \"${RKEY}\";/" index.html > index.html.tmp && mv index.html.tmp index.html
 info "Updated index.html"
 
 # Patch .well-known/site.standard.publication
