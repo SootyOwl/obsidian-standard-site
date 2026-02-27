@@ -2,7 +2,9 @@
 <!--
   ┌─────────────────────────────────────────────┐
   │  CONFIGURATION                              │
-  │  Run: node setup.mjs                        │
+  │  Run: curl -fsSL https://raw.github         │
+  │  usercontent.com/SootyOwl/obsidian-         │
+  │  standard-site/main/viewer/setup.sh | bash  │
   │  Or manually set HANDLE and optionally      │
   │  PUBLICATION_RKEY below.                    │
   └─────────────────────────────────────────────┘
@@ -525,7 +527,7 @@ function showSetupInstructions() {
   box.appendChild(p0);
 
   const pre0 = el("pre");
-  pre0.appendChild(el("code", null, "node setup.mjs"));
+  pre0.appendChild(el("code", null, "curl -fsSL https://raw.githubusercontent.com/SootyOwl/obsidian-standard-site/main/viewer/setup.sh | bash"));
   box.appendChild(pre0);
 
   const p1 = el("p");
