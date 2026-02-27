@@ -818,7 +818,34 @@ function render() {
   }
 }
 
+// ── Client-side navigation ──────────────────────────────────────
+
+function navigateTo(path) {
+  history.pushState(null, "", path);
+  render();
+  window.scrollTo(0, 0);
+}
+
+document.getElementById("app").addEventListener("click", function(e) {
+  const link = e.target.closest("a");
+  if (!link) return;
+  const href = link.getAttribute("href");
+  if (!href) return;
+  // Only intercept internal links (same origin, starts with BASE_PATH)
+  if (href.startsWith(BASE_PATH + "/") || href === BASE_PATH + "/") {
+    e.preventDefault();
+    navigateTo(href);
+  }
+});
+
 async function init() {
+  // Recover from 404.html redirect (static host fallback)
+  const savedPath = sessionStorage.getItem("redirectPath");
+  if (savedPath) {
+    sessionStorage.removeItem("redirectPath");
+    history.replaceState(null, "", BASE_PATH + savedPath);
+  }
+
   if (HANDLE === "your-handle.bsky.social") {
     showSetupInstructions();
     return;
@@ -834,7 +861,7 @@ async function init() {
   }
 }
 
-window.addEventListener("hashchange", () => {
+window.addEventListener("popstate", () => {
   if (appState) render();
 });
 
