@@ -669,14 +669,25 @@ async function loadData() {
   const pdsUrl = await resolvePDS(did);
 
   let publication;
+  let publicationUri;
   if (PUBLICATION_RKEY) {
     publication = await getPublication(pdsUrl, did, PUBLICATION_RKEY);
+    publicationUri = `at://${did}/site.standard.publication/${PUBLICATION_RKEY}`;
   } else {
     const publications = await listPublications(pdsUrl, did);
-    publication = publications.length > 0 ? publications[0].value : null;
+    if (publications.length > 0) {
+      publication = publications[0].value;
+      publicationUri = publications[0].uri;
+    } else {
+      publication = null;
+      publicationUri = null;
+    }
   }
 
-  const documents = await listAllDocuments(pdsUrl, did);
+  const allDocuments = await listAllDocuments(pdsUrl, did);
+  const documents = publicationUri
+    ? allDocuments.filter((d) => d.value.site === publicationUri)
+    : allDocuments;
 
   const data = { did, pdsUrl, publication, documents };
   setCachedData(data);
