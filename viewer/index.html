@@ -239,6 +239,32 @@ body {
 }
 .site-footer a { color: var(--link); text-decoration: none; }
 .site-footer a:hover { text-decoration: underline; }
+
+/* Backlinks */
+.backlinks {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.backlinks h2 {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+.backlinks ul {
+  list-style: none;
+  padding: 0;
+}
+.backlinks li {
+  padding: 0.3rem 0;
+}
+.backlinks a {
+  color: var(--link);
+  text-decoration: none;
+}
+.backlinks a:hover {
+  text-decoration: underline;
+}
 </style>
 </head>
 <body>
@@ -609,7 +635,16 @@ function showHomepage(publication, documents, did) {
   app.appendChild(renderFooter());
 }
 
-function showPost(publication, doc, did) {
+function findBacklinks(targetUri, documents) {
+  if (!targetUri) return [];
+  return documents.filter((d) => {
+    const refs = d.value.references;
+    if (!refs || !Array.isArray(refs)) return false;
+    return refs.some((r) => r.uri === targetUri);
+  });
+}
+
+function showPost(publication, doc, did, documents) {
   const app = clearApp();
   const v = doc.value;
   const rkey = extractRkey(doc.uri);
@@ -647,6 +682,24 @@ function showPost(publication, doc, did) {
     contentDiv.appendChild(p);
   }
   article.appendChild(contentDiv);
+
+  // Backlinks
+  const targetUri = `at://${did}/site.standard.document/${rkey}`;
+  const backlinks = findBacklinks(targetUri, documents || []);
+  if (backlinks.length > 0) {
+    const backlinksSection = el("section", { className: "backlinks" });
+    backlinksSection.appendChild(el("h2", null, "Backlinks"));
+    const ul = el("ul");
+    for (const bl of backlinks) {
+      const blRkey = extractRkey(bl.uri);
+      const href = "#" + (bl.value.path || "/" + blRkey);
+      const li = el("li");
+      li.appendChild(el("a", { href }, bl.value.title || "Untitled"));
+      ul.appendChild(li);
+    }
+    backlinksSection.appendChild(ul);
+    article.appendChild(backlinksSection);
+  }
 
   app.appendChild(article);
   app.appendChild(renderFooter());
@@ -717,7 +770,7 @@ function render() {
   if (route.type === "post") {
     const doc = findDocument(documents, route.path);
     if (doc) {
-      showPost(publication, doc, did);
+      showPost(publication, doc, did, documents);
     } else {
       showNotFound(route.path);
     }
