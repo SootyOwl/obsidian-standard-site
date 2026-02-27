@@ -1,3 +1,10 @@
+export interface BlobRef {
+	$type: "blob";
+	ref: { $link: string };
+	mimeType: string;
+	size: number;
+}
+
 export interface MarkpubMarkdown {
 	$type: "at.markpub.markdown";
 	text: string;
@@ -17,7 +24,7 @@ export interface DocumentRecord {
 	updatedAt?: string;
 	textContent?: string;
 	content?: MarkpubMarkdown;
-	coverImage?: unknown;
+	coverImage?: BlobRef;
 	bskyPostRef?: unknown;
 	references?: Array<{ uri: string }>;
 }
@@ -41,6 +48,7 @@ export interface NoteFrontmatter {
 	description?: string;
 	slug?: string;
 	rkey?: string;
+	coverImage?: string;
 }
 
 export interface DocumentInput {
@@ -53,6 +61,7 @@ export interface DocumentInput {
 	updatedAt?: string;
 	markdown: string;
 	plainText: string;
+	coverImage?: BlobRef;
 	references?: Array<{ uri: string }>;
 }
 
@@ -80,6 +89,8 @@ export function buildDocumentRecord(input: DocumentInput): DocumentRecord {
 	if (input.updatedAt) {
 		record.updatedAt = input.updatedAt;
 	}
+	if (input.coverImage) {
+		record.coverImage = input.coverImage;
 	if (input.references && input.references.length > 0) {
 		record.references = input.references;
 	}

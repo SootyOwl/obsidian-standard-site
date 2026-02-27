@@ -1,4 +1,4 @@
-import type { DocumentRecord, NoteFrontmatter } from "./types";
+import type { DocumentRecord, NoteFrontmatter, BlobRef } from "./types";
 import { buildDocumentRecord } from "./types";
 import { transformObsidianMarkdown, type WikilinkResolver } from "./transform";
 import { markdownToPlainText } from "./plaintext";
@@ -16,6 +16,7 @@ export interface PrepareInput {
 	config: PublishConfig;
 	resolveWikilink: WikilinkResolver;
 	existingPublishedAt?: string;
+	coverImage?: BlobRef;
 }
 
 export interface PrepareResult {
@@ -25,7 +26,7 @@ export interface PrepareResult {
 }
 
 export function prepareNoteForPublish(input: PrepareInput): PrepareResult {
-	const { filePath, frontmatter, body, config, resolveWikilink, existingPublishedAt } = input;
+	const { filePath, frontmatter, body, config, resolveWikilink, existingPublishedAt, coverImage } = input;
 
 	// Derive title
 	const title = frontmatter.title || filePath.replace(/\.md$/, "").split("/").pop() || "Untitled";
@@ -55,6 +56,7 @@ export function prepareNoteForPublish(input: PrepareInput): PrepareResult {
 		updatedAt,
 		markdown: transformedMarkdown,
 		plainText,
+		coverImage,
 		references,
 	});
 

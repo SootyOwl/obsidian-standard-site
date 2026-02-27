@@ -1,5 +1,5 @@
 import { AtpAgent } from "@atproto/api";
-import type { DocumentRecord, PublicationRecord } from "./types";
+import type { DocumentRecord, PublicationRecord, BlobRef } from "./types";
 
 export interface RecordRef {
 	uri: string;
@@ -138,6 +138,11 @@ export class StandardSiteClient {
 		} while (cursor);
 
 		return allRecords;
+	}
+
+	async uploadBlob(data: Uint8Array, mimeType: string): Promise<BlobRef> {
+		const response = await this.agent.com.atproto.repo.uploadBlob(data, { encoding: mimeType });
+		return response.data.blob as unknown as BlobRef;
 	}
 
 	extractRkey(uri: string): string {
