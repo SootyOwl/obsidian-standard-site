@@ -95,6 +95,8 @@ describe("buildDocumentRecord", () => {
 		});
 
 		expect(record.coverImage).toBeUndefined();
+	});
+
 	it("includes references when provided", () => {
 		const record = buildDocumentRecord({
 			siteUri: "at://did:plc:abc123/site.standard.publication/self",
