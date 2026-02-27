@@ -65,13 +65,13 @@ The `viewer/` directory contains a zero-dependency static HTML site that renders
 ### Setup
 
 ```bash
-cd viewer
-node setup.mjs
+mkdir my-site && cd my-site
+curl -fsSL https://raw.githubusercontent.com/SootyOwl/obsidian-standard-site/main/viewer/setup.sh | bash
 ```
 
-The script prompts for your handle, resolves your DID, lists your publications, and configures `index.html` and `.well-known/site.standard.publication` automatically.
+The script downloads the viewer files, prompts for your handle, resolves your DID, lists your publications, and configures everything automatically.
 
-Host the `viewer/` folder on any static host (GitHub Pages, Cloudflare Pages, Netlify, etc.).
+Host the resulting directory on any static host (GitHub Pages, Cloudflare Pages, Netlify, etc.).
 
 ### Features
 
