@@ -8,7 +8,7 @@ import { StandardSiteClient } from "./atproto";
 import { prepareNoteForPublish, extractRkeyFromUri } from "./publish";
 import { computeSyncDiff, type VaultNote, type PdsRecord } from "./sync";
 import { deriveDocumentPath } from "./paths";
-import type { NoteFrontmatter } from "./types";
+import type { NoteFrontmatter, BlobRef } from "./types";
 import { buildNoteFromRecord } from "./pull";
 
 export default class StandardSitePlugin extends Plugin {
@@ -124,6 +124,31 @@ export default class StandardSitePlugin extends Plugin {
 		};
 	}
 
+	private getMimeType(filePath: string): string {
+		const ext = filePath.split(".").pop()?.toLowerCase() || "";
+		const mimeTypes: Record<string, string> = {
+			png: "image/png",
+			jpg: "image/jpeg",
+			jpeg: "image/jpeg",
+			gif: "image/gif",
+			webp: "image/webp",
+			svg: "image/svg+xml",
+			bmp: "image/bmp",
+		};
+		return mimeTypes[ext] || "application/octet-stream";
+	}
+
+	private async uploadCoverImage(client: StandardSiteClient, coverImagePath: string): Promise<BlobRef | undefined> {
+		const imageFile = this.app.vault.getAbstractFileByPath(coverImagePath);
+		if (!(imageFile instanceof TFile)) {
+			console.warn(`Cover image not found: ${coverImagePath}`);
+			return undefined;
+		}
+		const data = await this.app.vault.readBinary(imageFile);
+		const mimeType = this.getMimeType(imageFile.extension);
+		return await client.uploadBlob(new Uint8Array(data), mimeType);
+	}
+
 	private async publishOrUpdateNote(file: TFile) {
 		try {
 			const client = await this.getClient();
@@ -150,6 +175,12 @@ export default class StandardSitePlugin extends Plugin {
 				}
 			}
 
+			// Upload cover image if specified
+			let coverImage: BlobRef | undefined;
+			if (frontmatter.coverImage) {
+				coverImage = await this.uploadCoverImage(client, frontmatter.coverImage);
+			}
+
 			const { record, isUpdate, rkey } = prepareNoteForPublish({
 				filePath: file.path,
 				frontmatter,
@@ -157,6 +188,7 @@ export default class StandardSitePlugin extends Plugin {
 				config: { siteUri, publishRoot: this.settings.publishRoot },
 				resolveWikilink: this.buildWikilinkResolver(),
 				existingPublishedAt,
+				coverImage,
 			});
 
 			let resultUri: string;
@@ -234,6 +266,12 @@ export default class StandardSitePlugin extends Plugin {
 						}
 					}
 
+					// Upload cover image if specified
+					let coverImage: BlobRef | undefined;
+					if (frontmatter.coverImage) {
+						coverImage = await this.uploadCoverImage(client, frontmatter.coverImage);
+					}
+
 					const { record, isUpdate, rkey } = prepareNoteForPublish({
 						filePath: file.path,
 						frontmatter,
@@ -241,6 +279,7 @@ export default class StandardSitePlugin extends Plugin {
 						config: { siteUri, publishRoot: this.settings.publishRoot },
 						resolveWikilink: this.buildWikilinkResolver(),
 						existingPublishedAt,
+						coverImage,
 					});
 
 					let resultUri: string;

@@ -179,6 +179,14 @@ body {
 }
 .post-content th { font-weight: 600; }
 
+/* Cover image */
+.cover-image {
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+
 /* States */
 .loading {
   color: var(--text-secondary);
@@ -637,6 +645,13 @@ function showPost(publication, doc, did) {
   const tags = renderTags(v.tags);
   if (tags) articleHeader.appendChild(tags);
   article.appendChild(articleHeader);
+
+  // Cover image
+  if (v.coverImage && v.coverImage.ref) {
+    const cid = v.coverImage.ref.$link;
+    const blobUrl = `${appState.pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`;
+    article.appendChild(el("img", { src: blobUrl, className: "cover-image", alt: v.title || "" }));
+  }
 
   // Content
   const contentDiv = el("div", { className: "post-content" });
