@@ -3,11 +3,6 @@ main.js
 *.js.map
 data.json
 test-vault/
-.*
 !.well-known
 !.gitignore
-config
-hooks
-HEAD
-objects
-refs
+docs/plans/
