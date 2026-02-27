@@ -304,7 +304,7 @@ const renderer = new marked.Renderer();
 renderer.link = function({ href, title, tokens }) {
   const safeHref = href || "";
   if (safeHref.startsWith("/") && !safeHref.includes("://")) {
-    href = "#" + safeHref;
+    href = BASE_PATH + safeHref;
   } else {
     href = safeHref;
   }
@@ -477,13 +477,14 @@ async function listAllDocuments(pdsUrl, did) {
 // ── Routing ────────────────────────────────────────────────────
 
 function getRoute() {
-  const hash = window.location.hash;
-  if (!hash || hash === "#" || hash === "#/") {
+  let path = window.location.pathname;
+  // Strip BASE_PATH prefix
+  if (BASE_PATH && path.startsWith(BASE_PATH)) {
+    path = path.slice(BASE_PATH.length);
+  }
+  if (!path || path === "/") {
     return { type: "home" };
   }
-  // Strip leading #
-  let path = hash.slice(1);
-  // Ensure leading /
   if (!path.startsWith("/")) path = "/" + path;
   return { type: "post", path };
 }
@@ -640,7 +641,7 @@ function showHomepage(publication, documents, did) {
     for (const doc of sorted) {
       const v = doc.value;
       const rkey = extractRkey(doc.uri);
-      const href = "#" + (v.path || "/" + rkey);
+      const href = BASE_PATH + (v.path || "/" + rkey);
       const title = v.title || "Untitled";
 
       const li = el("li", { className: "post-item" });
@@ -689,7 +690,7 @@ function showPost(publication, doc, did, documents) {
 
   // Nav
   const nav = el("nav", { className: "nav" });
-  const backLink = el("a", { href: "#/" });
+  const backLink = el("a", { href: BASE_PATH + "/" });
   backLink.innerHTML = DOMPurify.sanitize("&larr; " + escapeHtml(siteName));
   nav.appendChild(backLink);
   app.appendChild(nav);
@@ -730,7 +731,7 @@ function showPost(publication, doc, did, documents) {
     const ul = el("ul");
     for (const bl of backlinks) {
       const blRkey = extractRkey(bl.uri);
-      const href = "#" + (bl.value.path || "/" + blRkey);
+      const href = BASE_PATH + (bl.value.path || "/" + blRkey);
       const li = el("li");
       li.appendChild(el("a", { href }, bl.value.title || "Untitled"));
       ul.appendChild(li);
@@ -747,7 +748,7 @@ function showNotFound(path) {
   const app = clearApp();
 
   const nav = el("nav", { className: "nav" });
-  nav.appendChild(el("a", { href: "#/" }, "\u2190 Back"));
+  nav.appendChild(el("a", { href: BASE_PATH + "/" }, "\u2190 Back"));
   app.appendChild(nav);
 
   const errDiv = el("div", { className: "error" });
