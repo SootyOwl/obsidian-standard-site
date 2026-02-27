@@ -94,7 +94,8 @@ Host the resulting directory on any static host (GitHub Pages, Cloudflare Pages,
 
 ### Features
 
-- Client-side rendering with hash-based routing
+- Client-side rendering with clean URL routing (History API)
+- Open Graph and Twitter Card meta tags for social sharing
 - Light/dark mode
 - Post list with dates, descriptions, tags, and cover image thumbnails
 - Cover images displayed as hero images on individual posts
@@ -102,6 +103,17 @@ Host the resulting directory on any static host (GitHub Pages, Cloudflare Pages,
 - Inter-note link resolution
 - Custom theming via `custom.css`
 - 5-minute session cache with manual refresh
+- Optional Cloudflare Pages Function for per-post social cards
+
+### Deployment
+
+The viewer works on any static host. For enhanced social sharing (per-post cards when links are shared on Twitter, Discord, etc.), deploy to Cloudflare Pages — the included Pages Function automatically injects Open Graph meta tags by fetching your content from ATProto at the edge.
+
+| Host | Social cards | Clean URLs |
+|------|-------------|------------|
+| GitHub Pages | Homepage only | Yes (via 404.html) |
+| Cloudflare Pages | Per-post | Yes (native) |
+| Other static hosts | Homepage only | Yes (via 404.html) |
 
 ## Network and data disclosure
 
