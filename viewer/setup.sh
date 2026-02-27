@@ -80,6 +80,44 @@ if c: print(c)
   fi
 }
 
+json_pub_detail() {
+  # Output: name<TAB>description<TAB>url
+  if [ "$JSON_CMD" = "jq" ]; then
+    jq -r '(.value.name // "") + "\t" + (.value.description // "") + "\t" + (.value.url // "")'
+  else
+    python3 -c "
+import sys, json
+v = json.load(sys.stdin).get('value', {})
+name = v.get('name', '')
+desc = v.get('description', '')
+url = v.get('url', '')
+print(f'{name}\t{desc}\t{url}')
+"
+  fi
+}
+
+derive_base_path() {
+  local url="$1"
+  if [ -z "$url" ]; then
+    echo ""
+    return
+  fi
+  if command -v python3 &>/dev/null; then
+    python3 -c "from urllib.parse import urlparse; p=urlparse('$1').path.rstrip('/'); print('' if p == '/' else p)"
+  else
+    # Bash fallback
+    local no_proto="${url#*://}"
+    local path_part="${no_proto#*/}"
+    if [ "$path_part" = "$no_proto" ]; then
+      echo ""
+    else
+      local path="/${path_part%/}"
+      [ "$path" = "/" ] && path=""
+      echo "$path"
+    fi
+  fi
+}
+
 urlencode() {
   if [ "$JSON_CMD" = "python3" ] || command -v python3 &>/dev/null; then
     python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$1"
@@ -99,6 +137,19 @@ mkdir -p .well-known
 curl -fsSL "${REPO_BASE}/.well-known/site.standard.publication" -o .well-known/site.standard.publication \
   || die "Failed to download .well-known/site.standard.publication"
 info "Downloaded .well-known/site.standard.publication"
+
+curl -fsSL "${REPO_BASE}/404.html" -o 404.html \
+  || die "Failed to download 404.html"
+info "Downloaded 404.html"
+
+mkdir -p functions/_lib
+curl -fsSL "${REPO_BASE}/functions/[[path]].js" -o "functions/[[path]].js" \
+  || warn "Could not download Cloudflare Pages Function (optional)"
+curl -fsSL "${REPO_BASE}/functions/_lib/helpers.js" -o "functions/_lib/helpers.js" \
+  || warn "Could not download function helpers (optional)"
+if [ -f "functions/[[path]].js" ]; then
+  info "Downloaded Cloudflare Pages Function (optional — for Cloudflare Pages deployment)"
+fi
 
 # ── Interactive setup ──────────────────────────────────────────
 printf "Enter your Bluesky handle: "
@@ -170,14 +221,44 @@ else
   [ -z "$RKEY" ] && die "Invalid selection."
 fi
 
-# Patch index.html (escape sed-special chars in replacement strings)
+# Fetch full publication record for metadata
+printf "Fetching publication details... "
+PUB_DETAIL=$(curl -fsSL "${PDS_URL}/xrpc/com.atproto.repo.getRecord?repo=$(urlencode "$DID")&collection=site.standard.publication&rkey=$(urlencode "$RKEY")" | json_pub_detail)
+PUB_NAME=$(echo "$PUB_DETAIL" | cut -f1)
+PUB_DESC=$(echo "$PUB_DETAIL" | cut -f2)
+PUB_URL=$(echo "$PUB_DETAIL" | cut -f3)
+BASE_PATH=$(derive_base_path "$PUB_URL")
+info "Name: ${PUB_NAME:-"(none)"}"
+[ -n "$PUB_DESC" ] && info "Description: ${PUB_DESC}"
+[ -n "$PUB_URL" ] && info "URL: ${PUB_URL}"
+[ -n "$BASE_PATH" ] && info "Base path: ${BASE_PATH}"
+
+# Escape values for sed
 HANDLE_ESC=$(printf '%s' "$HANDLE" | sed 's/[&/\]/\\&/g')
 RKEY_ESC=$(printf '%s' "$RKEY" | sed 's/[&/\]/\\&/g')
+BASE_PATH_ESC=$(printf '%s' "$BASE_PATH" | sed 's/[&/\]/\\&/g')
+PUB_NAME_ESC=$(printf '%s' "$PUB_NAME" | sed 's/[&/\]/\\&/g')
+PUB_DESC_ESC=$(printf '%s' "$PUB_DESC" | sed 's/[&/\]/\\&/g')
+PUB_URL_ESC=$(printf '%s' "$PUB_URL" | sed 's/[&/\]/\\&/g')
+
+# Patch index.html
 sed "s/const HANDLE = \".*\";/const HANDLE = \"${HANDLE_ESC}\";/" index.html > index.html.tmp && mv index.html.tmp index.html
 sed "s/const PUBLICATION_RKEY = \".*\";/const PUBLICATION_RKEY = \"${RKEY_ESC}\";/" index.html > index.html.tmp && mv index.html.tmp index.html
-info "Updated index.html"
+sed "s/const BASE_PATH = \".*\";/const BASE_PATH = \"${BASE_PATH_ESC}\";/" index.html > index.html.tmp && mv index.html.tmp index.html
+info "Updated index.html (config)"
 
-# Patch .well-known/site.standard.publication
+# Patch OG meta tags
+sed "s/<title>[^<]*<\/title>/<title>${PUB_NAME_ESC}<\/title>/" index.html > index.html.tmp && mv index.html.tmp index.html
+sed "s/og:title\" content=\"[^\"]*\"/og:title\" content=\"${PUB_NAME_ESC}\"/" index.html > index.html.tmp && mv index.html.tmp index.html
+sed "s/og:description\" content=\"[^\"]*\"/og:description\" content=\"${PUB_DESC_ESC}\"/" index.html > index.html.tmp && mv index.html.tmp index.html
+sed "s/og:url\" content=\"[^\"]*\"/og:url\" content=\"${PUB_URL_ESC}\"/" index.html > index.html.tmp && mv index.html.tmp index.html
+info "Updated index.html (OG tags)"
+
+# Patch 404.html
+sed "s/const BASE_PATH = \".*\";/const BASE_PATH = \"${BASE_PATH_ESC}\";/" 404.html > 404.html.tmp && mv 404.html.tmp 404.html
+info "Updated 404.html"
+
+# Patch .well-known
 printf "at://%s/site.standard.publication/%s\n" "$DID" "$RKEY" > .well-known/site.standard.publication
 info "Updated .well-known/site.standard.publication"
 
@@ -189,5 +270,9 @@ echo "  GitHub Pages, Cloudflare Pages, Netlify, etc."
 echo ""
 echo "  Files:"
 echo "    index.html"
+echo "    404.html"
 echo "    .well-known/site.standard.publication"
+if [ -f "functions/[[path]].js" ]; then
+  echo "    functions/          (Cloudflare Pages only — enables per-post social cards)"
+fi
 echo ""
