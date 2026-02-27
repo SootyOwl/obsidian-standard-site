@@ -15,6 +15,16 @@ Notes become `site.standard.document` records on your Personal Data Server (PDS)
 
 ## Installation
 
+### Via BRAT (Beta Reviewers Auto-update Tester)
+
+1. Install the [BRAT plugin](https://github.com/TfTHacker/obsidian42-brat)
+2. In Obsidian, open Settings → BRAT
+3. Click "Add Beta plugin"
+4. Enter `SootyOwl/obsidian-standard-site` as the repository
+5. Enable the plugin in Obsidian → Settings → Community Plugins
+
+### Manual Installation
+
 1. Clone this repo into your vault's `.obsidian/plugins/standard-site-publisher/` directory
 2. `npm install`
 3. `npm run build`

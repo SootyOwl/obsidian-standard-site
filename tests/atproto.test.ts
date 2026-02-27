@@ -15,6 +15,7 @@ vi.mock("@atproto/api", () => {
 					deleteRecord: vi.fn(),
 					getRecord: vi.fn(),
 					listRecords: vi.fn(),
+					uploadBlob: vi.fn(),
 				},
 				identity: {
 					resolveHandle: vi.fn(),
@@ -253,6 +254,17 @@ describe("StandardSiteClient", () => {
 
 			const record = await client.getDocument("nonexistent");
 			expect(record).toBeNull();
+		});
+	});
+
+	describe("uploadBlob", () => {
+		it("uploads blob data and returns blob ref", async () => {
+			const blobRef = { $type: "blob", ref: { $link: "bafyreia..." }, mimeType: "image/png", size: 1024 };
+			mockAgent.com.atproto.repo.uploadBlob.mockResolvedValue({ data: { blob: blobRef } });
+			const data = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+			const result = await client.uploadBlob(data, "image/png");
+			expect(mockAgent.com.atproto.repo.uploadBlob).toHaveBeenCalledWith(data, { encoding: "image/png" });
+			expect(result).toEqual(blobRef);
 		});
 	});
 });

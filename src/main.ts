@@ -8,7 +8,8 @@ import { StandardSiteClient } from "./atproto";
 import { prepareNoteForPublish, extractRkeyFromUri } from "./publish";
 import { computeSyncDiff, type VaultNote, type PdsRecord } from "./sync";
 import { deriveDocumentPath } from "./paths";
-import type { NoteFrontmatter, PublicationRecord } from "./types";
+import type { NoteFrontmatter, PublicationRecord, BlobRef } from "./types";
+import type { WikilinkResolver, ResolvedWikilink } from "./transform";
 import { buildNoteFromRecord } from "./pull";
 
 export default class StandardSitePlugin extends Plugin {
@@ -126,8 +127,8 @@ export default class StandardSitePlugin extends Plugin {
 		}
 	}
 
-	private buildWikilinkResolver(): (target: string) => string | null {
-		return (target: string) => {
+	private buildWikilinkResolver(did: string): WikilinkResolver {
+		return (target: string): ResolvedWikilink | null => {
 			const destFile = this.app.metadataCache.getFirstLinkpathDest(target, "");
 			if (!destFile) return null;
 
@@ -135,8 +136,38 @@ export default class StandardSitePlugin extends Plugin {
 			const frontmatter = cache?.frontmatter as NoteFrontmatter | undefined;
 			if (!frontmatter?.publish) return null;
 
-			return deriveDocumentPath(destFile.path, this.settings.publishRoot, frontmatter.slug);
+			const path = deriveDocumentPath(destFile.path, this.settings.publishRoot, frontmatter.slug);
+			const uri = frontmatter.rkey
+				? `at://${did}/site.standard.document/${frontmatter.rkey}`
+				: undefined;
+
+			return { path, uri };
 		};
+	}
+
+	private getMimeType(filePath: string): string {
+		const ext = filePath.split(".").pop()?.toLowerCase() || "";
+		const mimeTypes: Record<string, string> = {
+			png: "image/png",
+			jpg: "image/jpeg",
+			jpeg: "image/jpeg",
+			gif: "image/gif",
+			webp: "image/webp",
+			svg: "image/svg+xml",
+			bmp: "image/bmp",
+		};
+		return mimeTypes[ext] || "application/octet-stream";
+	}
+
+	private async uploadCoverImage(client: StandardSiteClient, coverImagePath: string): Promise<BlobRef | undefined> {
+		const imageFile = this.app.vault.getAbstractFileByPath(coverImagePath);
+		if (!(imageFile instanceof TFile)) {
+			console.warn(`Cover image not found: ${coverImagePath}`);
+			return undefined;
+		}
+		const data = await this.app.vault.readBinary(imageFile);
+		const mimeType = this.getMimeType(imageFile.extension);
+		return await client.uploadBlob(new Uint8Array(data), mimeType);
 	}
 
 	private async publishOrUpdateNote(file: TFile) {
@@ -166,13 +197,20 @@ export default class StandardSitePlugin extends Plugin {
 				}
 			}
 
+			// Upload cover image if specified
+			let coverImage: BlobRef | undefined;
+			if (frontmatter.coverImage) {
+				coverImage = await this.uploadCoverImage(client, frontmatter.coverImage);
+			}
+
 			const { record, isUpdate, rkey } = prepareNoteForPublish({
 				filePath: file.path,
 				frontmatter,
 				body,
 				config: { siteUri, publishRoot: this.settings.publishRoot },
-				resolveWikilink: this.buildWikilinkResolver(),
+				resolveWikilink: this.buildWikilinkResolver(client.did),
 				existingPublishedAt,
+				coverImage,
 			});
 
 			let resultUri: string;
@@ -251,13 +289,20 @@ export default class StandardSitePlugin extends Plugin {
 						}
 					}
 
+					// Upload cover image if specified
+					let coverImage: BlobRef | undefined;
+					if (frontmatter.coverImage) {
+						coverImage = await this.uploadCoverImage(client, frontmatter.coverImage);
+					}
+
 					const { record, isUpdate, rkey } = prepareNoteForPublish({
 						filePath: file.path,
 						frontmatter,
 						body,
 						config: { siteUri, publishRoot: this.settings.publishRoot },
-						resolveWikilink: this.buildWikilinkResolver(),
+						resolveWikilink: this.buildWikilinkResolver(client.did),
 						existingPublishedAt,
+						coverImage,
 					});
 
 					let resultUri: string;

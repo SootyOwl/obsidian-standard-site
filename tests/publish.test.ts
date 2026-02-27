@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { prepareNoteForPublish, extractRkeyFromUri } from "../src/publish";
+import type { BlobRef } from "../src/types";
 
 describe("prepareNoteForPublish", () => {
 	const defaultConfig = {
@@ -7,7 +8,7 @@ describe("prepareNoteForPublish", () => {
 		publishRoot: "",
 	};
 
-	const noopResolver = (_target: string) => null;
+	const noopResolver = (_target: string): import("../src/transform").ResolvedWikilink | null => null;
 
 	it("prepares a complete document record from note data", () => {
 		const result = prepareNoteForPublish({
@@ -88,6 +89,37 @@ describe("prepareNoteForPublish", () => {
 		expect(result.record.updatedAt).toBeDefined();
 	});
 
+	it("includes references from resolved wikilinks with URIs", () => {
+		const resolver = (target: string): import("../src/transform").ResolvedWikilink | null => {
+			if (target === "Other Post") return { path: "/other-post", uri: "at://did:plc:abc123/site.standard.document/xyz" };
+			return null;
+		};
+
+		const result = prepareNoteForPublish({
+			filePath: "post.md",
+			frontmatter: { title: "Post", publish: true },
+			body: "See [[Other Post]]",
+			config: defaultConfig,
+			resolveWikilink: resolver,
+		});
+
+		expect(result.record.references).toEqual([
+			{ uri: "at://did:plc:abc123/site.standard.document/xyz" },
+		]);
+	});
+
+	it("omits references when no wikilinks have URIs", () => {
+		const result = prepareNoteForPublish({
+			filePath: "post.md",
+			frontmatter: { title: "Post", publish: true },
+			body: "No links here",
+			config: defaultConfig,
+			resolveWikilink: noopResolver,
+		});
+
+		expect(result.record.references).toBeUndefined();
+	});
+
 	it("indicates create vs update based on rkey presence", () => {
 		const newResult = prepareNoteForPublish({
 			filePath: "post.md",
@@ -108,6 +140,37 @@ describe("prepareNoteForPublish", () => {
 		});
 		expect(updateResult.isUpdate).toBe(true);
 		expect(updateResult.rkey).toBe("existing123");
+	});
+
+	it("includes coverImage in record when provided", () => {
+		const coverImage: BlobRef = {
+			$type: "blob",
+			ref: { $link: "bafyreia..." },
+			mimeType: "image/png",
+			size: 1024,
+		};
+		const result = prepareNoteForPublish({
+			filePath: "post.md",
+			frontmatter: { title: "Post with Cover", publish: true },
+			body: "Content",
+			config: defaultConfig,
+			resolveWikilink: noopResolver,
+			coverImage,
+		});
+
+		expect(result.record.coverImage).toEqual(coverImage);
+	});
+
+	it("omits coverImage from record when not provided", () => {
+		const result = prepareNoteForPublish({
+			filePath: "post.md",
+			frontmatter: { title: "Post", publish: true },
+			body: "Content",
+			config: defaultConfig,
+			resolveWikilink: noopResolver,
+		});
+
+		expect(result.record.coverImage).toBeUndefined();
 	});
 });
 
