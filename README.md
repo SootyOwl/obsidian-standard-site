@@ -66,7 +66,7 @@ The `viewer/` directory contains a zero-dependency static HTML site that renders
 
 ```bash
 mkdir my-site && cd my-site
-curl -fsSL https://raw.githubusercontent.com/SootyOwl/standard-site-publisher/main/viewer/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/SootyOwl/obsidian-standard-site/refs/heads/main/viewer/setup.sh | bash
 ```
 
 The script downloads the viewer files, prompts for your handle, resolves your DID, lists your publications, and configures everything automatically.
