@@ -55,6 +55,18 @@ export default class StandardSitePlugin extends Plugin {
 			callback: () => this.syncFromAtproto(),
 		});
 
+		this.addCommand({
+			id: "add-publish-frontmatter",
+			name: "Add publish frontmatter",
+			checkCallback: (checking: boolean) => {
+				const file = this.app.workspace.getActiveFile();
+				if (!file || file.extension !== "md") return false;
+				if (checking) return true;
+				this.addPublishFrontmatter(file);
+				return true;
+			},
+		});
+
 		// File menu items
 		this.registerEvent(
 			this.app.workspace.on("file-menu", (menu, file) => {
@@ -68,6 +80,11 @@ export default class StandardSitePlugin extends Plugin {
 						item.setTitle("Unpublish from Standard.site")
 							.setIcon("trash")
 							.onClick(() => this.unpublishNote(file));
+					});
+					menu.addItem((item) => {
+						item.setTitle("Add Standard.site frontmatter")
+							.setIcon("file-plus")
+							.onClick(() => this.addPublishFrontmatter(file));
 					});
 				}
 			})
@@ -360,6 +377,18 @@ export default class StandardSitePlugin extends Plugin {
 			new Notice(`Sync from ATProto failed: ${e.message}`);
 			console.error("Standard.site sync-from error:", e);
 		}
+	}
+
+	private async addPublishFrontmatter(file: TFile) {
+		await this.app.fileManager.processFrontMatter(file, (fm) => {
+			if (fm.publish === undefined) fm.publish = true;
+			if (fm.title === undefined) fm.title = file.basename;
+			if (fm.description === undefined) fm.description = "";
+			if (fm.tags === undefined) fm.tags = [];
+			if (fm.slug === undefined) fm.slug = "";
+			if (fm.coverImage === undefined) fm.coverImage = "";
+		});
+		new Notice("Added publish frontmatter");
 	}
 
 	onunload() {
