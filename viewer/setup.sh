@@ -100,4 +100,51 @@ curl -fsSL "${REPO_BASE}/.well-known/site.standard.publication" -o .well-known/s
   || die "Failed to download .well-known/site.standard.publication"
 info "Downloaded .well-known/site.standard.publication"
 
+# ── Interactive setup ──────────────────────────────────────────
+printf "Enter your Bluesky handle: "
+read -r HANDLE
+[ -z "$HANDLE" ] && die "Handle is required."
+
+# Resolve handle → DID
+printf "Resolving handle... "
+DID=$(curl -fsSL "https://bsky.social/xrpc/com.atproto.identity.resolveHandle?handle=$(urlencode "$HANDLE")" | json_did)
+[ -z "$DID" ] || [ "$DID" = "null" ] && die "Could not resolve handle \"${HANDLE}\""
+printf "%s\n" "$DID"
+
+# Resolve DID → PDS
+printf "Finding PDS... "
+if [[ "$DID" == did:plc:* ]]; then
+  DID_DOC=$(curl -fsSL "https://plc.directory/${DID}")
+elif [[ "$DID" == did:web:* ]]; then
+  WEB_HOST="${DID#did:web:}"
+  WEB_HOST="${WEB_HOST//:///}"
+  DID_DOC=$(curl -fsSL "https://${WEB_HOST}/.well-known/did.json")
+else
+  die "Unsupported DID method: ${DID}"
+fi
+PDS_URL=$(echo "$DID_DOC" | json_pds)
+[ -z "$PDS_URL" ] || [ "$PDS_URL" = "null" ] && die "No PDS service found in DID document"
+printf "%s\n" "$PDS_URL"
 echo ""
+
+# List publications
+PUBLICATIONS=""
+CURSOR=""
+while true; do
+  URL="${PDS_URL}/xrpc/com.atproto.repo.listRecords?repo=$(urlencode "$DID")&collection=site.standard.publication&limit=100"
+  [ -n "$CURSOR" ] && URL="${URL}&cursor=$(urlencode "$CURSOR")"
+  RESPONSE=$(curl -fsSL "$URL") || die "Failed to list publications from PDS"
+  PAGE=$(echo "$RESPONSE" | json_publications)
+  [ -n "$PAGE" ] && PUBLICATIONS="${PUBLICATIONS}${PAGE}"$'\n'
+  CURSOR=$(echo "$RESPONSE" | json_cursor)
+  [ -z "$CURSOR" ] && break
+done
+
+# Trim trailing newline
+PUBLICATIONS=$(echo "$PUBLICATIONS" | sed '/^$/d')
+
+if [ -z "$PUBLICATIONS" ]; then
+  die "No publications found. Publish from the Obsidian plugin first, then re-run this script."
+fi
+
+PUB_COUNT=$(echo "$PUBLICATIONS" | wc -l | tr -d ' ')
