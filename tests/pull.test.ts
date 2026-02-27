@@ -68,4 +68,36 @@ describe("buildNoteFromRecord", () => {
 
 		expect(result.relativePath).toBe("root-post.md");
 	});
+
+	it("escapes YAML-special characters in frontmatter values", () => {
+		const result = buildNoteFromRecord({
+			rkey: "abc123",
+			value: {
+				title: 'My: "Fancy" Title',
+				path: "/test",
+				description: "Has a #hash and a: colon",
+				tags: ["tag: one", "normal"],
+				publishedAt: "2026-02-26T12:00:00.000Z",
+				textContent: "Content",
+			},
+		});
+
+		expect(result.frontmatter).toContain('title: "My: \\"Fancy\\" Title"');
+		expect(result.frontmatter).toContain('description: "Has a #hash and a: colon"');
+		expect(result.frontmatter).toContain('"tag: one"');
+		expect(result.frontmatter).toContain("normal");
+	});
+
+	it("rejects path traversal segments", () => {
+		expect(() =>
+			buildNoteFromRecord({
+				rkey: "abc123",
+				value: {
+					title: "Malicious",
+					path: "/../../../etc/passwd",
+					textContent: "Content",
+				},
+			})
+		).toThrow("Invalid path segment");
+	});
 });

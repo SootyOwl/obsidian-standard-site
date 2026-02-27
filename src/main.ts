@@ -102,11 +102,10 @@ export default class StandardSitePlugin extends Plugin {
 
 		// Auto-select if exactly one exists
 		const publications = await client.listPublications();
-		if (publications.length === 1) {
-			const publication = publications[0]!; // Safe: length check guarantees existence
-			this.settings.publicationUri = publication.uri;
+		if (publications.length === 1 && publications[0]) {
+			this.settings.publicationUri = publications[0].uri;
 			await this.saveSettings();
-			return publication.uri;
+			return publications[0].uri;
 		}
 
 		throw new Error("Please select a publication in settings");

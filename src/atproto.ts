@@ -20,7 +20,10 @@ export class StandardSiteClient {
 	}
 
 	get did(): string {
-		return this.agent.did!;
+		if (!this.agent.did) {
+			throw new Error("StandardSiteClient is not logged in. Call login() before accessing did.");
+		}
+		return this.agent.did;
 	}
 
 	async login(identifier: string, password: string): Promise<void> {
@@ -43,7 +46,7 @@ export class StandardSiteClient {
 				collection: "site.standard.publication",
 				rkey,
 			});
-			return { uri: response.data.uri, cid: response.data.cid!, value: response.data.value };
+			return { uri: response.data.uri, cid: response.data.cid ?? "", value: response.data.value };
 		} catch {
 			return null;
 		}
@@ -107,7 +110,7 @@ export class StandardSiteClient {
 				collection: "site.standard.document",
 				rkey,
 			});
-			return { uri: response.data.uri, cid: response.data.cid!, value: response.data.value };
+			return { uri: response.data.uri, cid: response.data.cid ?? "", value: response.data.value };
 		} catch {
 			return null;
 		}
@@ -139,6 +142,6 @@ export class StandardSiteClient {
 
 	extractRkey(uri: string): string {
 		const parts = uri.split("/");
-		return parts[parts.length - 1]!;
+		return parts[parts.length - 1] ?? "";
 	}
 }

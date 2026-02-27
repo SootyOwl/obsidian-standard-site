@@ -9,12 +9,12 @@
   │  PUBLICATION_RKEY below.                    │
   └─────────────────────────────────────────────┘
 -->
+<html lang="en">
+<head>
 <script>
 const HANDLE = "your-handle.bsky.social";
 const PUBLICATION_RKEY = "";
 </script>
-<html lang="en">
-<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Loading...</title>
@@ -254,11 +254,13 @@ body {
 // ── Marked setup ───────────────────────────────────────────────
 const renderer = new marked.Renderer();
 renderer.link = function({ href, title, tokens }) {
-  if (href && href.startsWith("/") && !href.includes("://")) {
-    href = "#" + href;
-  }
   const safeHref = href || "";
-  const hrefAttr = safeHref ? ` href="${escapeHtml(safeHref)}"` : "";
+  if (safeHref.startsWith("/") && !safeHref.includes("://")) {
+    href = "#" + safeHref;
+  } else {
+    href = safeHref;
+  }
+  const hrefAttr = href ? ` href="${escapeHtml(href)}"` : "";
   const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
   const text = this.parser.parseInline(tokens);
   return `<a${hrefAttr}${titleAttr}>${text}</a>`;
@@ -343,6 +345,9 @@ async function resolvePDS(did) {
     doc = await res.json();
   } else if (did.startsWith("did:web:")) {
     const host = did.replace("did:web:", "").replaceAll(":", "/");
+    if (!/^[A-Za-z0-9.-]+(\/[A-Za-z0-9.-]+)*$/.test(host)) {
+      throw new Error("Invalid did:web host");
+    }
     const res = await fetch(`https://${host}/.well-known/did.json`);
     if (!res.ok) throw new Error("Could not resolve did:web DID document");
     doc = await res.json();

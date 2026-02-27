@@ -170,16 +170,9 @@ else
   [ -z "$RKEY" ] && die "Invalid selection."
 fi
 
-# Patch index.html
-# Escape sed special characters in replacement strings
-HANDLE_ESC="${HANDLE//\\/\\\\}"
-HANDLE_ESC="${HANDLE_ESC//&/\\&}"
-HANDLE_ESC="${HANDLE_ESC//\//\\/}"
-HANDLE_ESC="${HANDLE_ESC//\"/\\\"}"
-RKEY_ESC="${RKEY//\\/\\\\}"
-RKEY_ESC="${RKEY_ESC//&/\\&}"
-RKEY_ESC="${RKEY_ESC//\//\\/}"
-RKEY_ESC="${RKEY_ESC//\"/\\\"}"
+# Patch index.html (escape sed-special chars in replacement strings)
+HANDLE_ESC=$(printf '%s' "$HANDLE" | sed 's/[&/\]/\\&/g')
+RKEY_ESC=$(printf '%s' "$RKEY" | sed 's/[&/\]/\\&/g')
 sed "s/const HANDLE = \".*\";/const HANDLE = \"${HANDLE_ESC}\";/" index.html > index.html.tmp && mv index.html.tmp index.html
 sed "s/const PUBLICATION_RKEY = \".*\";/const PUBLICATION_RKEY = \"${RKEY_ESC}\";/" index.html > index.html.tmp && mv index.html.tmp index.html
 info "Updated index.html"
