@@ -139,7 +139,7 @@ export default class StandardSitePlugin extends Plugin {
 			}
 
 			// Strip frontmatter from body
-			const body = content.replace(/^---\n[\s\S]*?\n---\n?/, "");
+			const body = content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "");
 
 			// Check for existing record to get publishedAt
 			let existingPublishedAt: string | undefined;
@@ -224,7 +224,7 @@ export default class StandardSitePlugin extends Plugin {
 
 				try {
 					const content = await this.app.vault.read(file);
-					const body = content.replace(/^---\n[\s\S]*?\n---\n?/, "");
+					const body = content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "");
 
 					let existingPublishedAt: string | undefined;
 					if (frontmatter.rkey) {
