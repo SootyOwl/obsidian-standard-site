@@ -505,7 +505,6 @@ function setDocumentVerification(did, rkey) {
   const link = document.createElement("link");
   link.rel = "site.standard.document";
   link.href = `at://${did}/site.standard.document/${rkey}`;
-  link.id = "standard-site-doc-verification";
   document.head.appendChild(link);
 }
 
