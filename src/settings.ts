@@ -88,6 +88,19 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 
 		this.renderPublicationPicker(containerEl);
 
+		new Setting(containerEl)
+			.setName("Base URL")
+			.setDesc("Your site URL (e.g. https://myblog.example.com). Synced to publication record.")
+			.addText((text) =>
+				text
+					.setPlaceholder("https://myblog.example.com")
+					.setValue(this.plugin.settings.publicationUrl)
+					.onChange(async (value) => {
+						this.plugin.settings.publicationUrl = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
 		// Vault section
 		containerEl.createEl("h3", { text: "Vault" });
 
