@@ -1,7 +1,7 @@
 {
 	"id": "standard-site-publisher",
 	"name": "Standard.site Publisher",
-	"version": "0.1.0",
+	"version": "0.5.0",
 	"minAppVersion": "0.15.0",
 	"description": "Publish notes to ATProto using Standard.site lexicons.",
 	"author": "SootyOwl",
