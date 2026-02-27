@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_BASE="https://raw.githubusercontent.com/SootyOwl/standard-site-publisher/main/viewer"
+REPO_BASE="https://raw.githubusercontent.com/SootyOwl/obsidian-standard-site/refs/heads/main/viewer"
 
 # ── Colors ──────────────────────────────────────────────────────
 RED='\033[0;31m'
