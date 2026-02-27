@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { prepareNoteForPublish, extractRkeyFromUri } from "../src/publish";
+import type { BlobRef } from "../src/types";
 
 describe("prepareNoteForPublish", () => {
 	const defaultConfig = {
@@ -108,6 +109,37 @@ describe("prepareNoteForPublish", () => {
 		});
 		expect(updateResult.isUpdate).toBe(true);
 		expect(updateResult.rkey).toBe("existing123");
+	});
+
+	it("includes coverImage in record when provided", () => {
+		const coverImage: BlobRef = {
+			$type: "blob",
+			ref: { $link: "bafyreia..." },
+			mimeType: "image/png",
+			size: 1024,
+		};
+		const result = prepareNoteForPublish({
+			filePath: "post.md",
+			frontmatter: { title: "Post with Cover", publish: true },
+			body: "Content",
+			config: defaultConfig,
+			resolveWikilink: noopResolver,
+			coverImage,
+		});
+
+		expect(result.record.coverImage).toEqual(coverImage);
+	});
+
+	it("omits coverImage from record when not provided", () => {
+		const result = prepareNoteForPublish({
+			filePath: "post.md",
+			frontmatter: { title: "Post", publish: true },
+			body: "Content",
+			config: defaultConfig,
+			resolveWikilink: noopResolver,
+		});
+
+		expect(result.record.coverImage).toBeUndefined();
 	});
 });
 

@@ -4,6 +4,7 @@ import {
 	type DocumentRecord,
 	type MarkpubMarkdown,
 	type NoteFrontmatter,
+	type BlobRef,
 	buildDocumentRecord,
 } from "../src/types";
 
@@ -61,5 +62,38 @@ describe("buildDocumentRecord", () => {
 		});
 
 		expect(record.updatedAt).toBe("2026-02-27T12:00:00.000Z");
+	});
+
+	it("includes coverImage when provided", () => {
+		const coverImage: BlobRef = {
+			$type: "blob",
+			ref: { $link: "bafyreia..." },
+			mimeType: "image/png",
+			size: 1024,
+		};
+		const record = buildDocumentRecord({
+			siteUri: "at://did:plc:abc123/site.standard.publication/self",
+			title: "Post with Cover",
+			path: "/cover",
+			publishedAt: "2026-02-26T12:00:00.000Z",
+			markdown: "Content",
+			plainText: "Content",
+			coverImage,
+		});
+
+		expect(record.coverImage).toEqual(coverImage);
+	});
+
+	it("omits coverImage when not provided", () => {
+		const record = buildDocumentRecord({
+			siteUri: "at://did:plc:abc123/site.standard.publication/self",
+			title: "No Cover",
+			path: "/no-cover",
+			publishedAt: "2026-02-26T12:00:00.000Z",
+			markdown: "Content",
+			plainText: "Content",
+		});
+
+		expect(record.coverImage).toBeUndefined();
 	});
 });
