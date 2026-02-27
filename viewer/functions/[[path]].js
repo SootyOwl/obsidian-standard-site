@@ -69,13 +69,13 @@ async function fetchSiteData(config) {
   return { did, pdsUrl, publication, publicationUri, documents };
 }
 
-async function getCachedSiteData(config, cacheKey) {
+async function getCachedSiteData(config, cacheKey, waitUntil) {
   const cache = caches.default;
   const cacheUrl = new URL(`https://cache.internal/${cacheKey}`);
 
   const cached = await cache.match(cacheUrl);
   if (cached) {
-    return { data: await cached.json(), cache };
+    return await cached.json();
   }
 
   const data = await fetchSiteData(config);
@@ -83,10 +83,9 @@ async function getCachedSiteData(config, cacheKey) {
   const cacheResponse = new Response(JSON.stringify(data), {
     headers: { "Cache-Control": `s-maxage=${CACHE_TTL}` },
   });
-  // Don't await — write to cache in the background
-  cache.put(cacheUrl, cacheResponse);
+  waitUntil(cache.put(cacheUrl, cacheResponse));
 
-  return { data, cache };
+  return data;
 }
 
 export async function onRequest(context) {
@@ -116,7 +115,7 @@ export async function onRequest(context) {
 
   try {
     const cacheKey = `atproto-${config.handle}-${config.publicationRkey}`;
-    const { data } = await getCachedSiteData(config, cacheKey);
+    const data = await getCachedSiteData(config, cacheKey, context.waitUntil.bind(context));
 
     const routePath = config.basePath
       ? path.slice(config.basePath.length) || "/"
