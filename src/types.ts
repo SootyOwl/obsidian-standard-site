@@ -91,6 +91,7 @@ export function buildDocumentRecord(input: DocumentInput): DocumentRecord {
 	}
 	if (input.coverImage) {
 		record.coverImage = input.coverImage;
+	}
 	if (input.references && input.references.length > 0) {
 		record.references = input.references;
 	}
