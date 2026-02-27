@@ -39,6 +39,16 @@ export class StandardSiteClient {
 		return { uri: response.data.uri, cid: response.data.cid };
 	}
 
+	async updatePublication(rkey: string, record: PublicationRecord): Promise<RecordRef> {
+		const response = await this.agent.com.atproto.repo.putRecord({
+			repo: this.did,
+			collection: "site.standard.publication",
+			rkey,
+			record: record as unknown as Record<string, unknown>,
+		});
+		return { uri: response.data.uri, cid: response.data.cid };
+	}
+
 	async getPublication(rkey: string): Promise<ListedRecord | null> {
 		try {
 			const response = await this.agent.com.atproto.repo.getRecord({
