@@ -11,6 +11,9 @@ Notes become `site.standard.document` records on your Personal Data Server (PDS)
 - **Sync diff** — detects creates, updates, and orphaned records
 - **Multi-publication support** — manage multiple blogs/sites from one vault
 - **Markdown transform** — converts Obsidian-flavored markdown (wikilinks, callouts, highlights, comments) to standard GFM
+- **Cover images** — attach a vault image to any note via frontmatter; uploaded as an ATProto blob
+- **Document references** — cross-document `at://` URIs are stored in records so ATProto indexers can discover backlinks
+- **Frontmatter template** — command to scaffold publish frontmatter on any note
 - **Static viewer** — included single-file HTML viewer that renders your publication directly from ATProto
 
 ## Installation
@@ -39,6 +42,7 @@ Open the plugin settings in Obsidian and configure:
 | **Handle** | Your ATProto handle (e.g. `alice.bsky.social`) |
 | **App Password** | An [app password](https://bsky.app/settings/app-passwords) for authentication |
 | **PDS URL** | Your PDS URL (defaults to `https://bsky.social`) |
+| **Base URL** | Your site URL (e.g. `https://myblog.example.com`); synced to the publication record |
 | **Publish Root** | Vault folder containing notes to publish (empty = entire vault) |
 | **Pull Folder** | Where to save pulled notes (defaults to publish root) |
 
@@ -57,12 +61,17 @@ publish: true
 tags: [blog, tech]
 description: A short summary
 slug: custom-slug        # optional path override
+coverImage: images/hero.png  # optional vault image path
 ---
 
 Your content here...
 ```
 
+Use the **Add publish frontmatter** command to scaffold these fields on any note automatically.
+
 Run the **Publish to Standard.site** command from the command palette. After first publish, the plugin writes an `rkey` field back to your frontmatter for fast syncing on subsequent updates.
+
+Wikilinks to other published notes (e.g. `[[My Other Post]]`) are resolved to standard markdown links and stored as `at://` references in the document record, enabling backlink discovery across ATProto.
 
 ### Pulling
 
@@ -87,7 +96,9 @@ Host the resulting directory on any static host (GitHub Pages, Cloudflare Pages,
 
 - Client-side rendering with hash-based routing
 - Light/dark mode
-- Post list with dates, descriptions, and tags
+- Post list with dates, descriptions, tags, and cover image thumbnails
+- Cover images displayed as hero images on individual posts
+- Backlinks section showing documents that reference the current post
 - Inter-note link resolution
 - Custom theming via `custom.css`
 - 5-minute session cache with manual refresh
