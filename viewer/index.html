@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<!--
+  ┌─────────────────────────────────────────────┐
+  │  CONFIGURATION                              │
+  │  Run: node setup.mjs                        │
+  │  Or manually set HANDLE and optionally      │
+  │  PUBLICATION_RKEY below.                    │
+  └─────────────────────────────────────────────┘
+-->
+<script>
+const HANDLE = "your-handle.bsky.social";
+const PUBLICATION_RKEY = "";
+</script>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loading...</title>
+<link rel="stylesheet" href="custom.css">
+<style>
+:root {
+  --bg: #ffffff;
+  --text: #1a1a1a;
+  --text-secondary: #555;
+  --border: #e0e0e0;
+  --link: #0969da;
+  --link-hover: #0550ae;
+  --code-bg: #f4f4f4;
+  --blockquote-border: #d0d7de;
+  --tag-bg: #eef1f5;
+  --tag-text: #444;
+  --error-bg: #fff3f3;
+  --error-border: #e0b0b0;
+  --error-text: #900;
+  --setup-bg: #f0f7ff;
+  --setup-border: #a0c4e8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a1a;
+    --text: #e0e0e0;
+    --text-secondary: #aaa;
+    --border: #333;
+    --link: #58a6ff;
+    --link-hover: #79c0ff;
+    --code-bg: #2a2a2a;
+    --blockquote-border: #444;
+    --tag-bg: #2a2e35;
+    --tag-text: #bbb;
+    --error-bg: #2a1a1a;
+    --error-border: #5a2a2a;
+    --error-text: #f88;
+    --setup-bg: #1a2230;
+    --setup-border: #2a4060;
+  }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  padding: 2rem 1rem;
+}
+
+#app {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* Header */
+.site-header { margin-bottom: 2rem; }
+.site-header h1 { font-size: 1.8rem; margin-bottom: 0.25rem; }
+.site-header p { color: var(--text-secondary); }
+
+/* Navigation */
+.nav { margin-bottom: 1.5rem; }
+.nav a {
+  color: var(--link);
+  text-decoration: none;
+}
+.nav a:hover { text-decoration: underline; }
+
+/* Post list */
+.post-list { list-style: none; }
+.post-item {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.post-item:last-child { border-bottom: none; }
+.post-item a {
+  color: var(--text);
+  text-decoration: none;
+  display: block;
+}
+.post-item a:hover .post-title { color: var(--link); }
+.post-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  transition: color 0.15s;
+}
+.post-meta {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+.post-description {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+.post-tags { margin-top: 0.3rem; }
+.tag {
+  display: inline-block;
+  background: var(--tag-bg);
+  color: var(--tag-text);
+  padding: 0.1rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  margin-right: 0.3rem;
+}
+
+/* Post content — markdown */
+.post-content {
+  margin-top: 1.5rem;
+  line-height: 1.7;
+}
+.post-content h1 { font-size: 1.6rem; margin: 1.5rem 0 0.75rem; }
+.post-content h2 { font-size: 1.4rem; margin: 1.4rem 0 0.7rem; }
+.post-content h3 { font-size: 1.2rem; margin: 1.3rem 0 0.6rem; }
+.post-content h4, .post-content h5, .post-content h6 { font-size: 1rem; margin: 1.2rem 0 0.5rem; }
+.post-content p { margin-bottom: 1rem; }
+.post-content a { color: var(--link); }
+.post-content a:hover { color: var(--link-hover); }
+.post-content img { max-width: 100%; height: auto; border-radius: 4px; }
+.post-content ul, .post-content ol { margin: 0 0 1rem 1.5rem; }
+.post-content li { margin-bottom: 0.25rem; }
+.post-content blockquote {
+  border-left: 3px solid var(--blockquote-border);
+  padding: 0.5rem 1rem;
+  margin: 0 0 1rem 0;
+  color: var(--text-secondary);
+}
+.post-content code {
+  background: var(--code-bg);
+  padding: 0.15rem 0.35rem;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.post-content pre {
+  background: var(--code-bg);
+  padding: 1rem;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+.post-content pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+.post-content hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5rem 0;
+}
+.post-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+.post-content th, .post-content td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+.post-content th { font-weight: 600; }
+
+/* States */
+.loading {
+  color: var(--text-secondary);
+  padding: 2rem 0;
+  text-align: center;
+}
+.error {
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  color: var(--error-text);
+  padding: 1rem;
+  border-radius: 4px;
+}
+.setup-instructions {
+  background: var(--setup-bg);
+  border: 1px solid var(--setup-border);
+  padding: 1.5rem;
+  border-radius: 4px;
+  line-height: 1.7;
+}
+.setup-instructions code {
+  background: var(--code-bg);
+  padding: 0.15rem 0.35rem;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.setup-instructions pre {
+  background: var(--code-bg);
+  padding: 0.75rem;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+.setup-instructions pre code { background: none; padding: 0; }
+.empty { color: var(--text-secondary); padding: 1rem 0; }
+
+/* Refresh */
+.refresh-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  float: right;
+}
+.refresh-btn:hover { border-color: var(--text-secondary); color: var(--text); }
+
+/* Footer */
+.site-footer {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  text-align: center;
+}
+.site-footer a { color: var(--link); text-decoration: none; }
+.site-footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="loading">Loading...</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@17.0.0/lib/marked.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
+<script>
+// ── Marked setup ───────────────────────────────────────────────
+const renderer = new marked.Renderer();
+renderer.link = function({ href, title, tokens }) {
+  if (href && href.startsWith("/") && !href.includes("://")) {
+    href = "#" + href;
+  }
+  const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
+  const text = this.parser.parseInline(tokens);
+  return `<a href="${escapeHtml(href)}"${titleAttr}>${text}</a>`;
+};
+marked.setOptions({ gfm: true, breaks: false, renderer });
+
+// ── Utilities ──────────────────────────────────────────────────
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function formatDate(iso) {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  } catch {
+    return iso;
+  }
+}
+
+function extractRkey(uri) {
+  return uri.split("/").pop();
+}
+
+function renderMarkdown(text) {
+  return DOMPurify.sanitize(marked.parse(text));
+}
+
+// ── Cache (sessionStorage, 5-min TTL) ──────────────────────────
+
+const CACHE_KEY = "standard-site-viewer";
+const CACHE_TTL = 5 * 60 * 1000;
+
+function getCachedData() {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (Date.now() - data.timestamp > CACHE_TTL) {
+      sessionStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedData(data) {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ...data, timestamp: Date.now() }));
+  } catch {
+    // sessionStorage full or unavailable — ignore
+  }
+}
+
+function clearCache() {
+  sessionStorage.removeItem(CACHE_KEY);
+}
+
+// ── ATProto API ────────────────────────────────────────────────
+
+async function resolveHandle(handle) {
+  const res = await fetch(
+    `https://bsky.social/xrpc/com.atproto.identity.resolveHandle?handle=${encodeURIComponent(handle)}`
+  );
+  if (!res.ok) throw new Error(`Could not resolve handle "${handle}"`);
+  const data = await res.json();
+  return data.did;
+}
+
+async function resolvePDS(did) {
+  let doc;
+  if (did.startsWith("did:plc:")) {
+    const res = await fetch(`https://plc.directory/${encodeURIComponent(did)}`);
+    if (!res.ok) throw new Error("Could not resolve DID from plc.directory");
+    doc = await res.json();
+  } else if (did.startsWith("did:web:")) {
+    const host = did.replace("did:web:", "").replaceAll(":", "/");
+    const res = await fetch(`https://${host}/.well-known/did.json`);
+    if (!res.ok) throw new Error("Could not resolve did:web DID document");
+    doc = await res.json();
+  } else {
+    throw new Error(`Unsupported DID method: ${did}`);
+  }
+  const service = doc.service?.find(
+    (s) => s.id === "#atproto_pds" || s.type === "AtprotoPersonalDataServer"
+  );
+  if (!service?.serviceEndpoint) {
+    throw new Error("No PDS service found in DID document");
+  }
+  return service.serviceEndpoint;
+}
+
+async function getPublication(pdsUrl, did, rkey) {
+  try {
+    const res = await fetch(
+      `${pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=site.standard.publication&rkey=${encodeURIComponent(rkey)}`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.value;
+  } catch {
+    return null;
+  }
+}
+
+async function listPublications(pdsUrl, did) {
+  const allRecords = [];
+  let cursor;
+
+  do {
+    let url = `${pdsUrl}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=site.standard.publication&limit=100`;
+    if (cursor) url += `&cursor=${encodeURIComponent(cursor)}`;
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Failed to list publications from PDS");
+    const data = await res.json();
+
+    for (const record of data.records) {
+      allRecords.push({
+        uri: record.uri,
+        cid: record.cid,
+        value: record.value,
+      });
+    }
+    cursor = data.cursor;
+  } while (cursor);
+
+  return allRecords;
+}
+
+async function listAllDocuments(pdsUrl, did) {
+  const allRecords = [];
+  let cursor;
+
+  do {
+    let url = `${pdsUrl}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=site.standard.document&limit=100`;
+    if (cursor) url += `&cursor=${encodeURIComponent(cursor)}`;
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Failed to list documents from PDS");
+    const data = await res.json();
+
+    for (const record of data.records) {
+      allRecords.push({
+        uri: record.uri,
+        cid: record.cid,
+        value: record.value,
+      });
+    }
+    cursor = data.cursor;
+  } while (cursor);
+
+  return allRecords;
+}
+
+// ── Routing ────────────────────────────────────────────────────
+
+function getRoute() {
+  const hash = window.location.hash;
+  if (!hash || hash === "#" || hash === "#/") {
+    return { type: "home" };
+  }
+  // Strip leading #
+  let path = hash.slice(1);
+  // Ensure leading /
+  if (!path.startsWith("/")) path = "/" + path;
+  return { type: "post", path };
+}
+
+function findDocument(documents, path) {
+  // Match by path field first
+  const byPath = documents.find((d) => d.value.path === path);
+  if (byPath) return byPath;
+
+  // Fallback: match rkey from last URL segment
+  const segment = path.split("/").pop();
+  if (segment) {
+    const byRkey = documents.find((d) => extractRkey(d.uri) === segment);
+    if (byRkey) return byRkey;
+  }
+
+  return null;
+}
+
+// ── Document verification (link tag in head) ───────────────────
+
+function setDocumentVerification(did, rkey) {
+  removeDocumentVerification();
+  if (!did || !rkey) return;
+  const link = document.createElement("link");
+  link.rel = "site.standard.document";
+  link.href = `at://${did}/site.standard.document/${rkey}`;
+  link.id = "standard-site-doc-verification";
+  document.head.appendChild(link);
+}
+
+function removeDocumentVerification() {
+  const existing = document.getElementById("standard-site-doc-verification");
+  if (existing) existing.remove();
+}
+
+// ── DOM Rendering ──────────────────────────────────────────────
+
+function clearApp() {
+  const app = document.getElementById("app");
+  app.textContent = "";
+  return app;
+}
+
+function el(tag, attrs, children) {
+  const node = document.createElement(tag);
+  if (attrs) {
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "className") node.className = v;
+      else if (k === "onclick") node.addEventListener("click", v);
+      else node.setAttribute(k, v);
+    }
+  }
+  if (children !== undefined) {
+    if (typeof children === "string") node.textContent = children;
+    else if (Array.isArray(children)) children.forEach((c) => { if (c) node.appendChild(c); });
+    else node.appendChild(children);
+  }
+  return node;
+}
+
+function elHtml(tag, attrs, html) {
+  const node = document.createElement(tag);
+  if (attrs) {
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "className") node.className = v;
+      else node.setAttribute(k, v);
+    }
+  }
+  if (html) node.innerHTML = DOMPurify.sanitize(html);
+  return node;
+}
+
+function renderTags(tags) {
+  if (!tags || tags.length === 0) return null;
+  const container = el("div", { className: "post-tags" });
+  tags.forEach((t) => container.appendChild(el("span", { className: "tag" }, t)));
+  return container;
+}
+
+function renderFooter() {
+  const footer = el("footer", { className: "site-footer" });
+  footer.appendChild(document.createTextNode("Powered by "));
+  footer.appendChild(el("a", { href: "https://standard.site", target: "_blank", rel: "noopener" }, "standard.site"));
+  return footer;
+}
+
+function showSetupInstructions() {
+  const app = clearApp();
+  document.title = "Standard Site Viewer — Setup";
+
+  const box = el("div", { className: "setup-instructions" });
+  box.appendChild(el("h2", null, "Setup Required"));
+
+  const p0 = el("p");
+  p0.appendChild(document.createTextNode("Run the setup script:"));
+  box.appendChild(p0);
+
+  const pre0 = el("pre");
+  pre0.appendChild(el("code", null, "node setup.mjs"));
+  box.appendChild(pre0);
+
+  const p1 = el("p");
+  p1.appendChild(document.createTextNode("Or manually edit "));
+  p1.appendChild(el("code", null, "index.html"));
+  p1.appendChild(document.createTextNode(" and set your handle:"));
+  box.appendChild(p1);
+
+  const pre1 = el("pre");
+  pre1.appendChild(el("code", null, 'const HANDLE = "your-handle.bsky.social";'));
+  box.appendChild(pre1);
+
+  app.appendChild(box);
+}
+
+function showLoading() {
+  const app = clearApp();
+  app.appendChild(el("div", { className: "loading" }, "Loading..."));
+}
+
+function showError(message) {
+  const app = clearApp();
+  app.appendChild(el("div", { className: "error" }, message));
+}
+
+function showHomepage(publication, documents, did) {
+  const app = clearApp();
+  const siteName = publication?.name || HANDLE;
+  const siteDesc = publication?.description || "";
+
+  document.title = siteName;
+
+  // Header
+  const header = el("header", { className: "site-header" });
+  const h1 = el("h1", null, siteName);
+  const refreshBtn = el("button", {
+    className: "refresh-btn",
+    onclick: () => { clearCache(); init(); },
+  }, "Refresh");
+  h1.appendChild(refreshBtn);
+  header.appendChild(h1);
+  if (siteDesc) header.appendChild(el("p", null, siteDesc));
+  app.appendChild(header);
+
+  // Post list
+  if (documents.length === 0) {
+    app.appendChild(el("p", { className: "empty" }, "No posts yet."));
+  } else {
+    const sorted = [...documents].sort(
+      (a, b) => new Date(b.value.publishedAt || 0) - new Date(a.value.publishedAt || 0)
+    );
+
+    const ul = el("ul", { className: "post-list" });
+    for (const doc of sorted) {
+      const v = doc.value;
+      const rkey = extractRkey(doc.uri);
+      const href = "#" + (v.path || "/" + rkey);
+      const title = v.title || "Untitled";
+
+      const li = el("li", { className: "post-item" });
+      const a = el("a", { href });
+      a.appendChild(el("div", { className: "post-title" }, title));
+      if (v.publishedAt) a.appendChild(el("div", { className: "post-meta" }, formatDate(v.publishedAt)));
+      if (v.description) a.appendChild(el("div", { className: "post-description" }, v.description));
+      const tags = renderTags(v.tags);
+      if (tags) a.appendChild(tags);
+      li.appendChild(a);
+      ul.appendChild(li);
+    }
+    app.appendChild(ul);
+  }
+
+  app.appendChild(renderFooter());
+}
+
+function showPost(publication, doc, did) {
+  const app = clearApp();
+  const v = doc.value;
+  const rkey = extractRkey(doc.uri);
+  const siteName = publication?.name || HANDLE;
+  const title = v.title || "Untitled";
+
+  document.title = `${title} — ${siteName}`;
+
+  // Document verification
+  setDocumentVerification(did, rkey);
+
+  // Nav
+  const nav = el("nav", { className: "nav" });
+  const backLink = el("a", { href: "#/" });
+  backLink.innerHTML = DOMPurify.sanitize("&larr; " + escapeHtml(siteName));
+  nav.appendChild(backLink);
+  app.appendChild(nav);
+
+  // Article
+  const article = el("article");
+
+  const articleHeader = el("header");
+  articleHeader.appendChild(el("h1", null, title));
+  if (v.publishedAt) articleHeader.appendChild(el("div", { className: "post-meta" }, formatDate(v.publishedAt)));
+  const tags = renderTags(v.tags);
+  if (tags) articleHeader.appendChild(tags);
+  article.appendChild(articleHeader);
+
+  // Content
+  const contentDiv = el("div", { className: "post-content" });
+  if (v.content && v.content.$type === "at.markpub.markdown" && v.content.text) {
+    contentDiv.innerHTML = renderMarkdown(v.content.text);
+  } else if (v.textContent) {
+    const p = el("p", null, v.textContent);
+    contentDiv.appendChild(p);
+  }
+  article.appendChild(contentDiv);
+
+  app.appendChild(article);
+  app.appendChild(renderFooter());
+}
+
+function showNotFound(path) {
+  const app = clearApp();
+
+  const nav = el("nav", { className: "nav" });
+  nav.appendChild(el("a", { href: "#/" }, "\u2190 Back"));
+  app.appendChild(nav);
+
+  const errDiv = el("div", { className: "error" });
+  errDiv.appendChild(document.createTextNode("Post not found: "));
+  errDiv.appendChild(el("strong", null, path));
+  app.appendChild(errDiv);
+}
+
+// ── Main ───────────────────────────────────────────────────────
+
+let appState = null;
+
+async function loadData() {
+  const cached = getCachedData();
+  if (cached) return cached;
+
+  const did = await resolveHandle(HANDLE);
+  const pdsUrl = await resolvePDS(did);
+
+  let publication;
+  if (PUBLICATION_RKEY) {
+    publication = await getPublication(pdsUrl, did, PUBLICATION_RKEY);
+  } else {
+    const publications = await listPublications(pdsUrl, did);
+    publication = publications.length > 0 ? publications[0].value : null;
+  }
+
+  const documents = await listAllDocuments(pdsUrl, did);
+
+  const data = { did, pdsUrl, publication, documents };
+  setCachedData(data);
+  return data;
+}
+
+function render() {
+  const route = getRoute();
+
+  if (!appState) {
+    showLoading();
+    return;
+  }
+
+  removeDocumentVerification();
+
+  const { publication, documents, did } = appState;
+
+  if (route.type === "post") {
+    const doc = findDocument(documents, route.path);
+    if (doc) {
+      showPost(publication, doc, did);
+    } else {
+      showNotFound(route.path);
+    }
+  } else {
+    showHomepage(publication, documents, did);
+  }
+}
+
+async function init() {
+  if (HANDLE === "your-handle.bsky.social") {
+    showSetupInstructions();
+    return;
+  }
+
+  showLoading();
+
+  try {
+    appState = await loadData();
+    render();
+  } catch (err) {
+    showError(err.message || "Failed to load site data. Check your connection and try again.");
+  }
+}
+
+window.addEventListener("hashchange", () => {
+  if (appState) render();
+});
+
+init();
+</script>
+</body>
+</html>
