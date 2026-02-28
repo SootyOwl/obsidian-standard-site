@@ -12,10 +12,16 @@
 <script>
 const HANDLE = "your-handle.bsky.social";
 const PUBLICATION_RKEY = "";
+const BASE_PATH = "";
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Loading...</title>
+<title>Standard Site</title>
+<meta property="og:title" content="Standard Site">
+<meta property="og:description" content="">
+<meta property="og:type" content="website">
+<meta property="og:url" content="">
+<meta name="twitter:card" content="summary">
 <link rel="stylesheet" href="custom.css">
 <style>
 :root {
@@ -298,7 +304,7 @@ const renderer = new marked.Renderer();
 renderer.link = function({ href, title, tokens }) {
   const safeHref = href || "";
   if (safeHref.startsWith("/") && !safeHref.includes("://")) {
-    href = "#" + safeHref;
+    href = BASE_PATH + safeHref;
   } else {
     href = safeHref;
   }
@@ -471,13 +477,14 @@ async function listAllDocuments(pdsUrl, did) {
 // ── Routing ────────────────────────────────────────────────────
 
 function getRoute() {
-  const hash = window.location.hash;
-  if (!hash || hash === "#" || hash === "#/") {
+  let path = window.location.pathname;
+  // Strip BASE_PATH prefix
+  if (BASE_PATH && path.startsWith(BASE_PATH)) {
+    path = path.slice(BASE_PATH.length);
+  }
+  if (!path || path === "/") {
     return { type: "home" };
   }
-  // Strip leading #
-  let path = hash.slice(1);
-  // Ensure leading /
   if (!path.startsWith("/")) path = "/" + path;
   return { type: "post", path };
 }
@@ -633,7 +640,7 @@ function showHomepage(publication, documents, did) {
     for (const doc of sorted) {
       const v = doc.value;
       const rkey = extractRkey(doc.uri);
-      const href = "#" + (v.path || "/" + rkey);
+      const href = BASE_PATH + (v.path || "/" + rkey);
       const title = v.title || "Untitled";
 
       const li = el("li", { className: "post-item" });
@@ -682,7 +689,7 @@ function showPost(publication, doc, did, documents) {
 
   // Nav
   const nav = el("nav", { className: "nav" });
-  const backLink = el("a", { href: "#/" });
+  const backLink = el("a", { href: BASE_PATH + "/" });
   backLink.innerHTML = DOMPurify.sanitize("&larr; " + escapeHtml(siteName));
   nav.appendChild(backLink);
   app.appendChild(nav);
@@ -723,7 +730,7 @@ function showPost(publication, doc, did, documents) {
     const ul = el("ul");
     for (const bl of backlinks) {
       const blRkey = extractRkey(bl.uri);
-      const href = "#" + (bl.value.path || "/" + blRkey);
+      const href = BASE_PATH + (bl.value.path || "/" + blRkey);
       const li = el("li");
       li.appendChild(el("a", { href }, bl.value.title || "Untitled"));
       ul.appendChild(li);
@@ -740,7 +747,7 @@ function showNotFound(path) {
   const app = clearApp();
 
   const nav = el("nav", { className: "nav" });
-  nav.appendChild(el("a", { href: "#/" }, "\u2190 Back"));
+  nav.appendChild(el("a", { href: BASE_PATH + "/" }, "\u2190 Back"));
   app.appendChild(nav);
 
   const errDiv = el("div", { className: "error" });
@@ -810,7 +817,35 @@ function render() {
   }
 }
 
+// ── Client-side navigation ──────────────────────────────────────
+
+function navigateTo(path) {
+  history.pushState(null, "", path);
+  render();
+  window.scrollTo(0, 0);
+}
+
+document.getElementById("app").addEventListener("click", function(e) {
+  if (!(e.target instanceof Element)) return;
+  const link = e.target.closest("a");
+  if (!link) return;
+  const href = link.getAttribute("href");
+  if (!href) return;
+  // Only intercept internal links (same origin, starts with BASE_PATH)
+  if (href.startsWith(BASE_PATH + "/") || href === BASE_PATH + "/") {
+    e.preventDefault();
+    navigateTo(href);
+  }
+});
+
 async function init() {
+  // Recover from 404.html redirect (static host fallback)
+  const savedPath = sessionStorage.getItem("redirectPath");
+  if (savedPath) {
+    sessionStorage.removeItem("redirectPath");
+    history.replaceState(null, "", BASE_PATH + savedPath);
+  }
+
   if (HANDLE === "your-handle.bsky.social") {
     showSetupInstructions();
     return;
@@ -826,7 +861,7 @@ async function init() {
   }
 }
 
-window.addEventListener("hashchange", () => {
+window.addEventListener("popstate", () => {
   if (appState) render();
 });
 

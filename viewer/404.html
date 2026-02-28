@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body>
+<script>
+const BASE_PATH = "";
+const fullPath = window.location.pathname;
+const routePath = fullPath.slice(BASE_PATH.length) || "/";
+sessionStorage.setItem("redirectPath", routePath);
+window.location.replace(BASE_PATH + "/");
+</script>
+<noscript><p>JavaScript is required to view this site.</p></noscript>
+</body>
+</html>
