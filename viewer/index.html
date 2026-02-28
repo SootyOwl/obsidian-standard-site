@@ -827,6 +827,7 @@ function navigateTo(path) {
 }
 
 document.getElementById("app").addEventListener("click", function(e) {
+  if (!(e.target instanceof Element)) return;
   const link = e.target.closest("a");
   if (!link) return;
   const href = link.getAttribute("href");
