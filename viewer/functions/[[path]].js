@@ -118,7 +118,11 @@ export async function onRequest(context) {
     const data = await getCachedSiteData(config, cacheKey, context.waitUntil.bind(context));
 
     const routePath = config.basePath
-      ? path.slice(config.basePath.length) || "/"
+      ? (path === config.basePath
+          ? "/"
+          : path.startsWith(config.basePath + "/")
+            ? path.slice(config.basePath.length) || "/"
+            : path)
       : path;
 
     const siteName = data.publication?.name || config.handle;

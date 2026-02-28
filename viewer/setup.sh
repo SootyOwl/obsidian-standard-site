@@ -103,7 +103,14 @@ derive_base_path() {
     return
   fi
   if command -v python3 &>/dev/null; then
-    python3 -c "from urllib.parse import urlparse; p=urlparse('$1').path.rstrip('/'); print('' if p == '/' else p)"
+    python3 - "$url" <<'PY'
+import sys
+from urllib.parse import urlparse
+
+url = sys.argv[1] if len(sys.argv) > 1 else ""
+p = urlparse(url).path.rstrip('/')
+print('' if p == '/' else p)
+PY
   else
     # Bash fallback
     local no_proto="${url#*://}"
@@ -234,28 +241,28 @@ info "Name: ${PUB_NAME:-"(none)"}"
 [ -n "$BASE_PATH" ] && info "Base path: ${BASE_PATH}"
 
 # Escape values for sed
-HANDLE_ESC=$(printf '%s' "$HANDLE" | sed 's/[&/\]/\\&/g')
-RKEY_ESC=$(printf '%s' "$RKEY" | sed 's/[&/\]/\\&/g')
-BASE_PATH_ESC=$(printf '%s' "$BASE_PATH" | sed 's/[&/\]/\\&/g')
-PUB_NAME_ESC=$(printf '%s' "$PUB_NAME" | sed 's/[&/\]/\\&/g')
-PUB_DESC_ESC=$(printf '%s' "$PUB_DESC" | sed 's/[&/\]/\\&/g')
-PUB_URL_ESC=$(printf '%s' "$PUB_URL" | sed 's/[&/\]/\\&/g')
+HANDLE_ESC=$(printf '%s' "$HANDLE" | sed 's/[&/\\]/\\&/g')
+RKEY_ESC=$(printf '%s' "$RKEY" | sed 's/[&/\\]/\\&/g')
+BASE_PATH_ESC=$(printf '%s' "$BASE_PATH" | sed 's/[&/\\]/\\&/g')
+PUB_NAME_ESC=$(printf '%s' "$PUB_NAME" | sed 's/[&/\\]/\\&/g')
+PUB_DESC_ESC=$(printf '%s' "$PUB_DESC" | sed 's/[&/\\]/\\&/g')
+PUB_URL_ESC=$(printf '%s' "$PUB_URL" | sed 's/[&/\\]/\\&/g')
 
 # Patch index.html
-sed "s/const HANDLE = \".*\";/const HANDLE = \"${HANDLE_ESC}\";/" index.html > index.html.tmp && mv index.html.tmp index.html
-sed "s/const PUBLICATION_RKEY = \".*\";/const PUBLICATION_RKEY = \"${RKEY_ESC}\";/" index.html > index.html.tmp && mv index.html.tmp index.html
-sed "s/const BASE_PATH = \".*\";/const BASE_PATH = \"${BASE_PATH_ESC}\";/" index.html > index.html.tmp && mv index.html.tmp index.html
+sed "s|const HANDLE = \".*\";|const HANDLE = \"${HANDLE_ESC}\";|" index.html > index.html.tmp && mv index.html.tmp index.html
+sed "s|const PUBLICATION_RKEY = \".*\";|const PUBLICATION_RKEY = \"${RKEY_ESC}\";|" index.html > index.html.tmp && mv index.html.tmp index.html
+sed "s|const BASE_PATH = \".*\";|const BASE_PATH = \"${BASE_PATH_ESC}\";|" index.html > index.html.tmp && mv index.html.tmp index.html
 info "Updated index.html (config)"
 
 # Patch OG meta tags
-sed "s/<title>[^<]*<\/title>/<title>${PUB_NAME_ESC}<\/title>/" index.html > index.html.tmp && mv index.html.tmp index.html
-sed "s/og:title\" content=\"[^\"]*\"/og:title\" content=\"${PUB_NAME_ESC}\"/" index.html > index.html.tmp && mv index.html.tmp index.html
-sed "s/og:description\" content=\"[^\"]*\"/og:description\" content=\"${PUB_DESC_ESC}\"/" index.html > index.html.tmp && mv index.html.tmp index.html
-sed "s/og:url\" content=\"[^\"]*\"/og:url\" content=\"${PUB_URL_ESC}\"/" index.html > index.html.tmp && mv index.html.tmp index.html
+sed "s|<title>[^<]*</title>|<title>${PUB_NAME_ESC}</title>|" index.html > index.html.tmp && mv index.html.tmp index.html
+sed "s|og:title\" content=\"[^\"]*\"|og:title\" content=\"${PUB_NAME_ESC}\"|" index.html > index.html.tmp && mv index.html.tmp index.html
+sed "s|og:description\" content=\"[^\"]*\"|og:description\" content=\"${PUB_DESC_ESC}\"|" index.html > index.html.tmp && mv index.html.tmp index.html
+sed "s|og:url\" content=\"[^\"]*\"|og:url\" content=\"${PUB_URL_ESC}\"|" index.html > index.html.tmp && mv index.html.tmp index.html
 info "Updated index.html (OG tags)"
 
 # Patch 404.html
-sed "s/const BASE_PATH = \".*\";/const BASE_PATH = \"${BASE_PATH_ESC}\";/" 404.html > 404.html.tmp && mv 404.html.tmp 404.html
+sed "s|const BASE_PATH = \".*\";|const BASE_PATH = \"${BASE_PATH_ESC}\";|" 404.html > 404.html.tmp && mv 404.html.tmp 404.html
 info "Updated 404.html"
 
 # Patch .well-known
