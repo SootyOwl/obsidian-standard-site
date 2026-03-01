@@ -5,7 +5,6 @@ import { StandardSiteClient } from "./atproto";
 export interface StandardSiteSettings {
 	handle: string;
 	appPassword: string;
-	pdsUrl: string;
 	publicationName: string;
 	publicationDescription: string;
 	publicationUrl: string;
@@ -17,7 +16,6 @@ export interface StandardSiteSettings {
 export const DEFAULT_SETTINGS: StandardSiteSettings = {
 	handle: "",
 	appPassword: "",
-	pdsUrl: "https://bsky.social",
 	publicationName: "",
 	publicationDescription: "",
 	publicationUrl: "",
@@ -70,19 +68,6 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 				text.inputEl.type = "password";
 			});
 
-		new Setting(containerEl)
-			.setName("PDS URL")
-			.setDesc("Personal Data Server URL (default: https://bsky.social)")
-			.addText((text) =>
-				text
-					.setPlaceholder("https://bsky.social")
-					.setValue(this.plugin.settings.pdsUrl)
-					.onChange(async (value) => {
-						this.plugin.settings.pdsUrl = value;
-						await this.plugin.saveSettings();
-					})
-			);
-
 		// Publication section
 		containerEl.createEl("h3", { text: "Publication" });
 
@@ -134,7 +119,7 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 
 	private renderPublicationPicker(containerEl: HTMLElement) {
 		const wrapper = containerEl.createDiv();
-		const { handle, appPassword, pdsUrl } = this.plugin.settings;
+		const { handle, appPassword } = this.plugin.settings;
 
 		if (!handle || !appPassword) {
 			new Setting(wrapper)
@@ -147,7 +132,7 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 			.setName("Active publication")
 			.setDesc("Loading publications...");
 
-		const client = new StandardSiteClient(pdsUrl);
+		const client = new StandardSiteClient();
 		client.login(handle, appPassword).then(async () => {
 			const publications = await client.listPublications();
 			wrapper.empty();

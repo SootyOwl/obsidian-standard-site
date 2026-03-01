@@ -41,7 +41,6 @@ Open the plugin settings in Obsidian and configure:
 |---|---|
 | **Handle** | Your ATProto handle (e.g. `alice.bsky.social`) |
 | **App Password** | An [app password](https://bsky.app/settings/app-passwords) for authentication |
-| **PDS URL** | Your PDS URL (defaults to `https://bsky.social`) |
 | **Base URL** | Your site URL (e.g. `https://myblog.example.com`); synced to the publication record |
 | **Publish Root** | Vault folder containing notes to publish (empty = entire vault) |
 | **Pull Folder** | Where to save pulled notes (defaults to publish root) |
@@ -119,11 +118,11 @@ The viewer works on any static host. For enhanced social sharing (per-post cards
 
 This section is provided per Obsidian's developer policies to disclose how the plugin uses network requests and handles credentials.
 
-**Network requests.** The plugin connects to your configured ATProto Personal Data Server (PDS) to publish, update, unpublish, and sync notes. All network traffic goes exclusively to the PDS. The default PDS is `https://bsky.social`, but you can configure any PDS URL in the plugin settings.
+**Network requests.** The plugin resolves your handle to discover your Personal Data Server (PDS) via the public AT Protocol API (`public.api.bsky.app`) and the PLC directory (`plc.directory`). It then connects to your PDS to publish, update, unpublish, and sync notes. All write traffic goes exclusively to your PDS.
 
-**Authentication.** An ATProto handle and app password are required. App passwords can be generated at <https://bsky.app/settings/app-passwords>. The plugin uses these credentials solely to authenticate with your configured PDS.
+**Authentication.** An ATProto handle and app password are required. App passwords can be generated at <https://bsky.app/settings/app-passwords>. The plugin uses these credentials solely to authenticate with your PDS.
 
-**Credential storage.** Your handle and app password are stored in the plugin's `data.json` file within your vault's `.obsidian/plugins/standard-site-publisher/` directory. This is Obsidian's standard local plugin storage mechanism. Credentials are never transmitted to any service other than the configured PDS.
+**Credential storage.** Your handle and app password are stored in the plugin's `data.json` file within your vault's `.obsidian/plugins/standard-site-publisher/` directory. This is Obsidian's standard local plugin storage mechanism. Credentials are never transmitted to any service other than your PDS.
 
 **No telemetry.** The plugin does not collect analytics, telemetry, or tracking data of any kind.
 

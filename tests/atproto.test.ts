@@ -2,57 +2,70 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { StandardSiteClient } from "../src/atproto";
 import type { DocumentRecord, PublicationRecord } from "../src/types";
 
-// Mock the @atproto/api module
-vi.mock("@atproto/api", () => {
-	const mockAgent = {
-		login: vi.fn(),
+// Mock identity resolution
+vi.mock("../src/identity", () => ({
+	resolveIdentity: vi.fn().mockResolvedValue({
 		did: "did:plc:testuser123",
-		com: {
-			atproto: {
-				repo: {
-					createRecord: vi.fn(),
-					putRecord: vi.fn(),
-					deleteRecord: vi.fn(),
-					getRecord: vi.fn(),
-					listRecords: vi.fn(),
-					uploadBlob: vi.fn(),
-				},
-				identity: {
-					resolveHandle: vi.fn(),
-				},
-			},
-		},
-	};
-	return {
-		AtpAgent: vi.fn(function () { return mockAgent; }),
-		__mockAgent: mockAgent,
-	};
-});
+		pds: "https://test.pds.example",
+	}),
+}));
 
-// Get the mock agent for assertions
-async function getMockAgent() {
-	const mod = await import("@atproto/api");
-	return (mod as any).__mockAgent;
-}
+// Mock @atcute/client
+const mockRpc = {
+	get: vi.fn(),
+	post: vi.fn(),
+};
+
+const mockManager = {
+	login: vi.fn().mockResolvedValue({
+		did: "did:plc:testuser123",
+		pdsUri: "https://test.pds.example",
+	}),
+	session: {
+		did: "did:plc:testuser123",
+		pdsUri: "https://test.pds.example",
+	},
+};
+
+vi.mock("@atcute/client", () => ({
+	CredentialManager: vi.fn(function () { return mockManager; }),
+	Client: vi.fn(function () { return mockRpc; }),
+	ok: vi.fn((promise: any) => promise.then((r: any) => {
+		if (r && typeof r === "object" && "ok" in r) {
+			if (!r.ok) throw new Error(r.data?.message || "Request failed");
+			return r.data;
+		}
+		return r;
+	})),
+}));
 
 describe("StandardSiteClient", () => {
 	let client: StandardSiteClient;
-	let mockAgent: any;
 
 	beforeEach(async () => {
-		mockAgent = await getMockAgent();
 		vi.clearAllMocks();
-		client = new StandardSiteClient("https://bsky.social");
+		// Re-setup default mock behaviors after clearAllMocks
+		mockManager.login.mockResolvedValue({
+			did: "did:plc:testuser123",
+			pdsUri: "https://test.pds.example",
+		});
+		client = new StandardSiteClient();
+		await client.login("alice.bsky.social", "app-password-123");
 	});
 
 	describe("login", () => {
-		it("calls agent.login with identifier and password", async () => {
-			mockAgent.login.mockResolvedValue({ success: true });
-			await client.login("alice.bsky.social", "app-password-123");
-			expect(mockAgent.login).toHaveBeenCalledWith({
+		it("resolves identity and logs in via CredentialManager", async () => {
+			const { resolveIdentity } = await import("../src/identity");
+			expect(resolveIdentity).toHaveBeenCalledWith("alice.bsky.social");
+			expect(mockManager.login).toHaveBeenCalledWith({
 				identifier: "alice.bsky.social",
 				password: "app-password-123",
 			});
+		});
+
+		it("exposes resolved did and pdsUrl", () => {
+			expect(client.did).toBe("did:plc:testuser123");
+			expect(client.pdsUrl).toBe("https://test.pds.example");
 		});
 	});
 
@@ -68,16 +81,19 @@ describe("StandardSiteClient", () => {
 				content: { $type: "at.markpub.markdown", text: "test", flavor: "GFM" },
 			};
 
-			mockAgent.com.atproto.repo.createRecord.mockResolvedValue({
+			mockRpc.post.mockResolvedValue({
+				ok: true,
 				data: { uri: "at://did:plc:testuser123/site.standard.document/abc123", cid: "cid123" },
 			});
 
 			const result = await client.createDocument(doc);
 
-			expect(mockAgent.com.atproto.repo.createRecord).toHaveBeenCalledWith({
-				repo: "did:plc:testuser123",
-				collection: "site.standard.document",
-				record: doc,
+			expect(mockRpc.post).toHaveBeenCalledWith("com.atproto.repo.createRecord", {
+				input: {
+					repo: "did:plc:testuser123",
+					collection: "site.standard.document",
+					record: doc,
+				},
 			});
 			expect(result.uri).toBe("at://did:plc:testuser123/site.standard.document/abc123");
 		});
@@ -95,41 +111,48 @@ describe("StandardSiteClient", () => {
 				content: { $type: "at.markpub.markdown", text: "updated", flavor: "GFM" },
 			};
 
-			mockAgent.com.atproto.repo.putRecord.mockResolvedValue({
+			mockRpc.post.mockResolvedValue({
+				ok: true,
 				data: { uri: "at://did:plc:testuser123/site.standard.document/abc123", cid: "cid456" },
 			});
 
 			await client.updateDocument("abc123", doc);
 
-			expect(mockAgent.com.atproto.repo.putRecord).toHaveBeenCalledWith({
-				repo: "did:plc:testuser123",
-				collection: "site.standard.document",
-				rkey: "abc123",
-				record: doc,
+			expect(mockRpc.post).toHaveBeenCalledWith("com.atproto.repo.putRecord", {
+				input: {
+					repo: "did:plc:testuser123",
+					collection: "site.standard.document",
+					rkey: "abc123",
+					record: doc,
+				},
 			});
 		});
 	});
 
 	describe("deleteDocument", () => {
 		it("calls deleteRecord with rkey", async () => {
-			mockAgent.com.atproto.repo.deleteRecord.mockResolvedValue({ success: true });
+			mockRpc.post.mockResolvedValue({ ok: true, data: {} });
 			await client.deleteDocument("abc123");
 
-			expect(mockAgent.com.atproto.repo.deleteRecord).toHaveBeenCalledWith({
-				repo: "did:plc:testuser123",
-				collection: "site.standard.document",
-				rkey: "abc123",
+			expect(mockRpc.post).toHaveBeenCalledWith("com.atproto.repo.deleteRecord", {
+				input: {
+					repo: "did:plc:testuser123",
+					collection: "site.standard.document",
+					rkey: "abc123",
+				},
 			});
 		});
 	});
 
 	describe("listDocuments", () => {
 		it("returns all document records", async () => {
-			mockAgent.com.atproto.repo.listRecords.mockResolvedValue({
+			mockRpc.get.mockResolvedValue({
+				ok: true,
 				data: {
 					records: [
 						{
 							uri: "at://did:plc:testuser123/site.standard.document/abc123",
+							cid: "cid1",
 							value: { title: "Post 1", path: "/post-1" },
 						},
 					],
@@ -151,19 +174,22 @@ describe("StandardSiteClient", () => {
 				name: "My Blog",
 			};
 
-			mockAgent.com.atproto.repo.createRecord.mockResolvedValue({
+			mockRpc.post.mockResolvedValue({
+				ok: true,
 				data: { uri: "at://did:plc:testuser123/site.standard.publication/3mc7ts3zshc2y", cid: "cidpub1" },
 			});
 
 			const result = await client.createPublication(pub);
 
-			expect(mockAgent.com.atproto.repo.createRecord).toHaveBeenCalledWith({
-				repo: "did:plc:testuser123",
-				collection: "site.standard.publication",
-				record: pub,
+			expect(mockRpc.post).toHaveBeenCalledWith("com.atproto.repo.createRecord", {
+				input: {
+					repo: "did:plc:testuser123",
+					collection: "site.standard.publication",
+					record: pub,
+				},
 			});
-			// Verify no rkey was passed
-			const callArgs = mockAgent.com.atproto.repo.createRecord.mock.calls[0][0];
+			// Verify no rkey was passed in input
+			const callArgs = mockRpc.post.mock.calls[0][1].input;
 			expect(callArgs).not.toHaveProperty("rkey");
 			expect(result.uri).toBe("at://did:plc:testuser123/site.standard.publication/3mc7ts3zshc2y");
 		});
@@ -177,17 +203,20 @@ describe("StandardSiteClient", () => {
 				name: "My Blog",
 			};
 
-			mockAgent.com.atproto.repo.putRecord.mockResolvedValue({
+			mockRpc.post.mockResolvedValue({
+				ok: true,
 				data: { uri: "at://did:plc:testuser123/site.standard.publication/3mc7ts3zshc2y", cid: "cidpub2" },
 			});
 
 			const result = await client.updatePublication("3mc7ts3zshc2y", pub);
 
-			expect(mockAgent.com.atproto.repo.putRecord).toHaveBeenCalledWith({
-				repo: "did:plc:testuser123",
-				collection: "site.standard.publication",
-				rkey: "3mc7ts3zshc2y",
-				record: pub,
+			expect(mockRpc.post).toHaveBeenCalledWith("com.atproto.repo.putRecord", {
+				input: {
+					repo: "did:plc:testuser123",
+					collection: "site.standard.publication",
+					rkey: "3mc7ts3zshc2y",
+					record: pub,
+				},
 			});
 			expect(result.uri).toBe("at://did:plc:testuser123/site.standard.publication/3mc7ts3zshc2y");
 		});
@@ -195,8 +224,9 @@ describe("StandardSiteClient", () => {
 
 	describe("listPublications", () => {
 		it("returns all publication records with pagination", async () => {
-			mockAgent.com.atproto.repo.listRecords
+			mockRpc.get
 				.mockResolvedValueOnce({
+					ok: true,
 					data: {
 						records: [
 							{
@@ -209,6 +239,7 @@ describe("StandardSiteClient", () => {
 					},
 				})
 				.mockResolvedValueOnce({
+					ok: true,
 					data: {
 						records: [
 							{
@@ -225,32 +256,34 @@ describe("StandardSiteClient", () => {
 			expect(records).toHaveLength(2);
 			expect(records[0].value.name).toBe("Blog 1");
 			expect(records[1].value.name).toBe("Blog 2");
-			expect(mockAgent.com.atproto.repo.listRecords).toHaveBeenCalledWith({
-				repo: "did:plc:testuser123",
-				collection: "site.standard.publication",
-				limit: 100,
-				cursor: undefined,
+			expect(mockRpc.get).toHaveBeenCalledWith("com.atproto.repo.listRecords", {
+				params: {
+					repo: "did:plc:testuser123",
+					collection: "site.standard.publication",
+					limit: 100,
+					cursor: undefined,
+				},
 			});
 		});
 	});
 
 	describe("getDocument", () => {
 		it("returns a document by rkey", async () => {
-			mockAgent.com.atproto.repo.getRecord.mockResolvedValue({
+			mockRpc.get.mockResolvedValue({
+				ok: true,
 				data: {
 					uri: "at://did:plc:testuser123/site.standard.document/abc123",
+					cid: "cid1",
 					value: { title: "Post 1" },
 				},
 			});
 
 			const record = await client.getDocument("abc123");
-			expect(record.value.title).toBe("Post 1");
+			expect(record!.value.title).toBe("Post 1");
 		});
 
 		it("returns null when record not found", async () => {
-			mockAgent.com.atproto.repo.getRecord.mockRejectedValue(
-				new Error("Record not found")
-			);
+			mockRpc.get.mockRejectedValue(new Error("Record not found"));
 
 			const record = await client.getDocument("nonexistent");
 			expect(record).toBeNull();
@@ -260,10 +293,13 @@ describe("StandardSiteClient", () => {
 	describe("uploadBlob", () => {
 		it("uploads blob data and returns blob ref", async () => {
 			const blobRef = { $type: "blob", ref: { $link: "bafyreia..." }, mimeType: "image/png", size: 1024 };
-			mockAgent.com.atproto.repo.uploadBlob.mockResolvedValue({ data: { blob: blobRef } });
+			mockRpc.post.mockResolvedValue({ ok: true, data: { blob: blobRef } });
 			const data = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
 			const result = await client.uploadBlob(data, "image/png");
-			expect(mockAgent.com.atproto.repo.uploadBlob).toHaveBeenCalledWith(data, { encoding: "image/png" });
+			expect(mockRpc.post).toHaveBeenCalledWith("com.atproto.repo.uploadBlob", {
+				input: data,
+				headers: { "content-type": "image/png" },
+			});
 			expect(result).toEqual(blobRef);
 		});
 	});
