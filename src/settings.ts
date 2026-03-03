@@ -97,7 +97,11 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 			.setName("Base URL")
 			.setDesc("Your site URL (e.g. https://myblog.example.com). Synced to publication record.")
 			.addText((text) => {
-				this.updateBaseUrlUI = (url: string) => text.setValue(url);
+				this.updateBaseUrlUI = (url: string) => {
+					if (text.inputEl && text.inputEl.isConnected) {
+						text.setValue(url);
+					}
+				};
 				text
 					.setPlaceholder("https://myblog.example.com")
 					.setValue(this.plugin.settings.publicationUrl)
