@@ -283,7 +283,11 @@ describe("StandardSiteClient", () => {
 		});
 
 		it("returns null when record not found", async () => {
-			mockRpc.get.mockRejectedValue(new Error("Record not found"));
+			const notFoundError = new Error("Record not found");
+			notFoundError.name = "ClientResponseError";
+			(notFoundError as any).error = "RecordNotFound";
+			(notFoundError as any).status = 400;
+			mockRpc.get.mockRejectedValue(notFoundError);
 
 			const record = await client.getDocument("nonexistent");
 			expect(record).toBeNull();

@@ -1,6 +1,6 @@
 import { Client, CredentialManager, ok } from "@atcute/client";
-import type {} from "@atcute/atproto";
-import type {} from "@atcute/standard-site";
+import type { } from "@atcute/atproto";
+import type { } from "@atcute/standard-site";
 import type { Did } from "@atcute/lexicons/syntax";
 import { resolveIdentity } from "./identity";
 import type { DocumentRecord, PublicationRecord, BlobRef } from "./types";
@@ -77,8 +77,11 @@ export class StandardSiteClient {
 				},
 			}));
 			return { uri: data.uri, cid: data.cid ?? "", value: data.value };
-		} catch {
-			return null;
+		} catch (err: any) {
+			if (err?.name === "ClientResponseError" && (err.status === 404 || err.error === "RecordNotFound" || err.error === "InvalidRequest" || err.message?.includes("Record not found"))) {
+				return null;
+			}
+			throw err;
 		}
 	}
 
@@ -151,8 +154,11 @@ export class StandardSiteClient {
 				},
 			}));
 			return { uri: data.uri, cid: data.cid ?? "", value: data.value };
-		} catch {
-			return null;
+		} catch (err: any) {
+			if (err?.name === "ClientResponseError" && (err.status === 404 || err.error === "RecordNotFound" || err.error === "InvalidRequest" || err.message?.includes("Record not found"))) {
+				return null;
+			}
+			throw err;
 		}
 	}
 
