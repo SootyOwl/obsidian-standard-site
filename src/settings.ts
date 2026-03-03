@@ -165,9 +165,14 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 
 		if (this.plugin.settings.publicationUri) {
 			// Show selected even if we aren't loading right now
+			const displayName = this.plugin.settings.publicationName 
+				? `${this.plugin.settings.publicationName} (${this.plugin.settings.publicationUri})`
+				: this.plugin.settings.publicationUri;
+
 			new Setting(wrapper)
 				.setName("Active publication (saved)")
-				.setDesc(this.plugin.settings.publicationUri);
+				.setDesc(displayName)
+				.setTooltip("This is the publication currently saved in settings. Fetch publications to see if it's still valid or select a different one.");
 		}
 	}
 
@@ -200,10 +205,22 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 
 					// Auto-populate URL defensively if not already set, or if we want to ensure it's in sync.
 					const currentPub = publications.find(p => p.uri === this.plugin.settings.publicationUri);
-					if (currentPub && currentPub.value.url && !this.plugin.settings.publicationUrl) {
-						this.plugin.settings.publicationUrl = currentPub.value.url;
-						this.updateBaseUrlUI(currentPub.value.url);
-						this.plugin.saveSettings();
+					if (currentPub) {
+						let updated = false;
+						if (currentPub.value.url && !this.plugin.settings.publicationUrl) {
+							this.plugin.settings.publicationUrl = currentPub.value.url;
+							this.updateBaseUrlUI(currentPub.value.url);
+							updated = true;
+						}
+						const name = currentPub.value.name || "";
+						if (this.plugin.settings.publicationName !== name) {
+							this.plugin.settings.publicationName = name;
+							updated = true;
+						}
+						
+						if (updated) {
+							this.plugin.saveSettings();
+						}
 					}
 				}
 
@@ -216,9 +233,12 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 					this.plugin.settings.publicationUri = value;
 
 					const selectedPub = publications.find(p => p.uri === value);
-					if (selectedPub && selectedPub.value.url) {
-						this.plugin.settings.publicationUrl = selectedPub.value.url;
-						this.updateBaseUrlUI(selectedPub.value.url);
+					if (selectedPub) {
+						if (selectedPub.value.url) {
+							this.plugin.settings.publicationUrl = selectedPub.value.url;
+							this.updateBaseUrlUI(selectedPub.value.url);
+						}
+						this.plugin.settings.publicationName = selectedPub.value.name || "";
 					}
 
 					await this.plugin.saveSettings();
@@ -248,6 +268,7 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 								name: newName.trim(),
 							});
 							this.plugin.settings.publicationUri = ref.uri;
+							this.plugin.settings.publicationName = newName.trim();
 							await this.plugin.saveSettings();
 							this.display(); // re-render settings
 						} catch (e: any) {
