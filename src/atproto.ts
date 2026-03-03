@@ -1,4 +1,8 @@
-import { AtpAgent } from "@atproto/api";
+import { Client, CredentialManager, ok, ClientResponseError } from "@atcute/client";
+import type { } from "@atcute/atproto";
+import type { } from "@atcute/standard-site";
+import type { Did } from "@atcute/lexicons/syntax";
+import { resolveIdentity } from "./identity";
 import type { DocumentRecord, PublicationRecord, BlobRef } from "./types";
 
 export interface RecordRef {
@@ -13,52 +17,86 @@ export interface ListedRecord {
 }
 
 export class StandardSiteClient {
-	private agent: AtpAgent;
+	private manager!: CredentialManager;
+	private rpc!: Client;
+	private _did!: Did;
+	private _pdsUrl!: string;
 
-	constructor(serviceUrl: string) {
-		this.agent = new AtpAgent({ service: serviceUrl });
-	}
-
-	get did(): string {
-		if (!this.agent.did) {
+	get did(): Did {
+		if (!this._did) {
 			throw new Error("StandardSiteClient is not logged in. Call login() before accessing did.");
 		}
-		return this.agent.did;
+		return this._did;
 	}
 
-	async login(identifier: string, password: string): Promise<void> {
-		await this.agent.login({ identifier, password });
+	get pdsUrl(): string {
+		return this._pdsUrl;
+	}
+
+	async login(identifier: string, password: string, overridePdsUrl?: string): Promise<void> {
+		let pdsToUse = overridePdsUrl;
+		let didToUse = "";
+		
+		if (pdsToUse) {
+			// When overridePdsUrl is provided, we skip dynamic identity resolution.
+			// Note: We need a DID to instantiate queries. We will temporarily use the identifier 
+			// if it resembles a DID, otherwise we might fetch the did via a quick network call,
+			// or rely on CredentialManager mapping. For simplicity, if override is given,
+			// we assume the CredentialManager will give back the DID after login.
+		} else {
+			const { did, pds } = await resolveIdentity(identifier);
+			didToUse = did;
+			pdsToUse = pds;
+		}
+
+		if (!pdsToUse) throw new Error("Could not determine PDS URL.");
+
+		this.manager = new CredentialManager({ service: pdsToUse });
+		this.rpc = new Client({ handler: this.manager });
+		const loginResult = await this.manager.login({ identifier, password });
+
+		this._did = (didToUse || loginResult.did) as Did;
+		this._pdsUrl = pdsToUse;
 	}
 
 	async createPublication(record: PublicationRecord): Promise<RecordRef> {
-		const response = await this.agent.com.atproto.repo.createRecord({
-			repo: this.did,
-			collection: "site.standard.publication",
-			record: record as unknown as Record<string, unknown>,
-		});
-		return { uri: response.data.uri, cid: response.data.cid };
+		const { uri, cid } = await ok(this.rpc.post("com.atproto.repo.createRecord", {
+			input: {
+				repo: this.did,
+				collection: "site.standard.publication",
+				record: record as unknown as Record<string, unknown>,
+			},
+		}));
+		return { uri, cid };
 	}
 
 	async updatePublication(rkey: string, record: PublicationRecord): Promise<RecordRef> {
-		const response = await this.agent.com.atproto.repo.putRecord({
-			repo: this.did,
-			collection: "site.standard.publication",
-			rkey,
-			record: record as unknown as Record<string, unknown>,
-		});
-		return { uri: response.data.uri, cid: response.data.cid };
+		const { uri, cid } = await ok(this.rpc.post("com.atproto.repo.putRecord", {
+			input: {
+				repo: this.did,
+				collection: "site.standard.publication",
+				rkey,
+				record: record as unknown as Record<string, unknown>,
+			},
+		}));
+		return { uri, cid };
 	}
 
 	async getPublication(rkey: string): Promise<ListedRecord | null> {
 		try {
-			const response = await this.agent.com.atproto.repo.getRecord({
-				repo: this.did,
-				collection: "site.standard.publication",
-				rkey,
-			});
-			return { uri: response.data.uri, cid: response.data.cid ?? "", value: response.data.value };
-		} catch {
-			return null;
+			const data = await ok(this.rpc.get("com.atproto.repo.getRecord", {
+				params: {
+					repo: this.did,
+					collection: "site.standard.publication",
+					rkey,
+				},
+			}));
+			return { uri: data.uri, cid: data.cid ?? "", value: data.value };
+		} catch (err: any) {
+			if (err?.name === "ClientResponseError" && (err.status === 404 || err.error === "RecordNotFound" || err.error === "InvalidRequest" || err.message?.includes("Record not found"))) {
+				return null;
+			}
+			throw err;
 		}
 	}
 
@@ -67,62 +105,75 @@ export class StandardSiteClient {
 		let cursor: string | undefined;
 
 		do {
-			const response = await this.agent.com.atproto.repo.listRecords({
-				repo: this.did,
-				collection: "site.standard.publication",
-				limit: 100,
-				cursor,
-			});
-			for (const record of response.data.records) {
+			const data = await ok(this.rpc.get("com.atproto.repo.listRecords", {
+				params: {
+					repo: this.did,
+					collection: "site.standard.publication",
+					limit: 100,
+					cursor,
+				},
+			}));
+			for (const record of data.records) {
 				allRecords.push({
 					uri: record.uri,
 					cid: record.cid,
 					value: record.value,
 				});
 			}
-			cursor = response.data.cursor;
+			cursor = data.cursor;
 		} while (cursor);
 
 		return allRecords;
 	}
 
 	async createDocument(record: DocumentRecord): Promise<RecordRef> {
-		const response = await this.agent.com.atproto.repo.createRecord({
-			repo: this.did,
-			collection: "site.standard.document",
-			record: record as unknown as Record<string, unknown>,
-		});
-		return { uri: response.data.uri, cid: response.data.cid };
+		const { uri, cid } = await ok(this.rpc.post("com.atproto.repo.createRecord", {
+			input: {
+				repo: this.did,
+				collection: "site.standard.document",
+				record: record as unknown as Record<string, unknown>,
+			},
+		}));
+		return { uri, cid };
 	}
 
 	async updateDocument(rkey: string, record: DocumentRecord): Promise<RecordRef> {
-		const response = await this.agent.com.atproto.repo.putRecord({
-			repo: this.did,
-			collection: "site.standard.document",
-			rkey,
-			record: record as unknown as Record<string, unknown>,
-		});
-		return { uri: response.data.uri, cid: response.data.cid };
+		const { uri, cid } = await ok(this.rpc.post("com.atproto.repo.putRecord", {
+			input: {
+				repo: this.did,
+				collection: "site.standard.document",
+				rkey,
+				record: record as unknown as Record<string, unknown>,
+			},
+		}));
+		return { uri, cid };
 	}
 
 	async deleteDocument(rkey: string): Promise<void> {
-		await this.agent.com.atproto.repo.deleteRecord({
-			repo: this.did,
-			collection: "site.standard.document",
-			rkey,
-		});
+		await ok(this.rpc.post("com.atproto.repo.deleteRecord", {
+			input: {
+				repo: this.did,
+				collection: "site.standard.document",
+				rkey,
+			},
+		}));
 	}
 
 	async getDocument(rkey: string): Promise<ListedRecord | null> {
 		try {
-			const response = await this.agent.com.atproto.repo.getRecord({
-				repo: this.did,
-				collection: "site.standard.document",
-				rkey,
-			});
-			return { uri: response.data.uri, cid: response.data.cid ?? "", value: response.data.value };
-		} catch {
-			return null;
+			const data = await ok(this.rpc.get("com.atproto.repo.getRecord", {
+				params: {
+					repo: this.did,
+					collection: "site.standard.document",
+					rkey,
+				},
+			}));
+			return { uri: data.uri, cid: data.cid ?? "", value: data.value };
+		} catch (err: any) {
+			if (err?.name === "ClientResponseError" && (err.status === 404 || err.error === "RecordNotFound" || err.error === "InvalidRequest" || err.message?.includes("Record not found"))) {
+				return null;
+			}
+			throw err;
 		}
 	}
 
@@ -131,28 +182,33 @@ export class StandardSiteClient {
 		let cursor: string | undefined;
 
 		do {
-			const response = await this.agent.com.atproto.repo.listRecords({
-				repo: this.did,
-				collection: "site.standard.document",
-				limit: 100,
-				cursor,
-			});
-			for (const record of response.data.records) {
+			const data = await ok(this.rpc.get("com.atproto.repo.listRecords", {
+				params: {
+					repo: this.did,
+					collection: "site.standard.document",
+					limit: 100,
+					cursor,
+				},
+			}));
+			for (const record of data.records) {
 				allRecords.push({
 					uri: record.uri,
 					cid: record.cid,
 					value: record.value,
 				});
 			}
-			cursor = response.data.cursor;
+			cursor = data.cursor;
 		} while (cursor);
 
 		return allRecords;
 	}
 
 	async uploadBlob(data: Uint8Array, mimeType: string): Promise<BlobRef> {
-		const response = await this.agent.com.atproto.repo.uploadBlob(data, { encoding: mimeType });
-		return response.data.blob as unknown as BlobRef;
+		const result = await ok(this.rpc.post("com.atproto.repo.uploadBlob", {
+			input: data,
+			headers: { "content-type": mimeType },
+		}));
+		return result.blob as unknown as BlobRef;
 	}
 
 	extractRkey(uri: string): string {

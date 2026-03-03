@@ -94,6 +94,12 @@ export default class StandardSitePlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+
+		// Migration: auto-resolution was added; if users still have default hardcoded bsky.social, clear it.
+		if (this.settings.pdsUrl === "https://bsky.social") {
+			this.settings.pdsUrl = "";
+			await this.saveSettings();
+		}
 	}
 
 	async saveSettings() {
@@ -105,8 +111,9 @@ export default class StandardSitePlugin extends Plugin {
 			throw new Error("Please configure your ATProto handle and app password in settings");
 		}
 		if (!this.client) {
-			this.client = new StandardSiteClient(this.settings.pdsUrl);
-			await this.client.login(this.settings.handle, this.settings.appPassword);
+			let client = new StandardSiteClient();
+			await client.login(this.settings.handle, this.settings.appPassword, this.settings.pdsUrl);
+			this.client = client;  // assign after successful login to avoid caching a failed client
 		}
 		return this.client;
 	}

@@ -17,7 +17,7 @@ export interface StandardSiteSettings {
 export const DEFAULT_SETTINGS: StandardSiteSettings = {
 	handle: "",
 	appPassword: "",
-	pdsUrl: "https://bsky.social",
+	pdsUrl: "",
 	publicationName: "",
 	publicationDescription: "",
 	publicationUrl: "",
@@ -28,6 +28,7 @@ export const DEFAULT_SETTINGS: StandardSiteSettings = {
 
 export class StandardSiteSettingTab extends PluginSettingTab {
 	plugin: StandardSitePlugin;
+	private updateBaseUrlUI: (url: string) => void = () => {};
 
 	constructor(app: App, plugin: StandardSitePlugin) {
 		super(app, plugin);
@@ -70,13 +71,17 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 				text.inputEl.type = "password";
 			});
 
-		new Setting(containerEl)
+		// Advanced Authentication Section
+		const advancedAuthDetails = containerEl.createEl("details");
+		advancedAuthDetails.createEl("summary", { text: "Advanced Settings" });
+		
+		new Setting(advancedAuthDetails)
 			.setName("PDS URL")
-			.setDesc("Personal Data Server URL (default: https://bsky.social)")
+			.setDesc("Bypass identity resolution and use this Personal Data Server (PDS) URL instead (e.g. http://localhost:2583). Leave empty for auto-resolution.")
 			.addText((text) =>
 				text
-					.setPlaceholder("https://bsky.social")
-					.setValue(this.plugin.settings.pdsUrl)
+					.setPlaceholder("")
+					.setValue(this.plugin.settings.pdsUrl || "")
 					.onChange(async (value) => {
 						this.plugin.settings.pdsUrl = value;
 						await this.plugin.saveSettings();
@@ -91,15 +96,20 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Base URL")
 			.setDesc("Your site URL (e.g. https://myblog.example.com). Synced to publication record.")
-			.addText((text) =>
+			.addText((text) => {
+				this.updateBaseUrlUI = (url: string) => {
+					if (text.inputEl && text.inputEl.isConnected) {
+						text.setValue(url);
+					}
+				};
 				text
 					.setPlaceholder("https://myblog.example.com")
 					.setValue(this.plugin.settings.publicationUrl)
 					.onChange(async (value) => {
 						this.plugin.settings.publicationUrl = value;
 						await this.plugin.saveSettings();
-					})
-			);
+					});
+			});
 
 		// Vault section
 		containerEl.createEl("h3", { text: "Vault" });
@@ -134,7 +144,12 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 
 	private renderPublicationPicker(containerEl: HTMLElement) {
 		const wrapper = containerEl.createDiv();
-		const { handle, appPassword, pdsUrl } = this.plugin.settings;
+		this.renderPublicationPickerInternal(wrapper);
+	}
+
+	private renderPublicationPickerInternal(wrapper: HTMLDivElement) {
+		wrapper.empty();
+		const { handle, appPassword } = this.plugin.settings;
 
 		if (!handle || !appPassword) {
 			new Setting(wrapper)
@@ -143,12 +158,38 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 			return;
 		}
 
+		new Setting(wrapper)
+			.setName("Fetch publications")
+			.setDesc("Load your publications from the server after entering or changing credentials.")
+			.addButton((btn) => 
+				btn.setButtonText("Fetch").onClick(() => {
+					this.loadPublications(wrapper);
+				})
+			);
+
+		if (this.plugin.settings.publicationUri) {
+			// Show selected even if we aren't loading right now
+			const displayName = this.plugin.settings.publicationName 
+				? `${this.plugin.settings.publicationName} (${this.plugin.settings.publicationUri})`
+				: this.plugin.settings.publicationUri;
+
+			new Setting(wrapper)
+				.setName("Active publication (saved)")
+				.setDesc(displayName)
+				.setTooltip("This is the publication currently saved in settings. Fetch publications to see if it's still valid or select a different one.");
+		}
+	}
+
+	private loadPublications(wrapper: HTMLDivElement) {
+		wrapper.empty();
+		const { handle, appPassword } = this.plugin.settings;
+
 		const loadingSetting = new Setting(wrapper)
 			.setName("Active publication")
 			.setDesc("Loading publications...");
 
-		const client = new StandardSiteClient(pdsUrl);
-		client.login(handle, appPassword).then(async () => {
+		const client = new StandardSiteClient();
+		client.login(handle, appPassword, this.plugin.settings.pdsUrl).then(async () => {
 			const publications = await client.listPublications();
 			wrapper.empty();
 
@@ -165,6 +206,26 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 
 				if (this.plugin.settings.publicationUri) {
 					dropdown.setValue(this.plugin.settings.publicationUri);
+
+					// Auto-populate URL defensively if not already set, or if we want to ensure it's in sync.
+					const currentPub = publications.find(p => p.uri === this.plugin.settings.publicationUri);
+					if (currentPub) {
+						let updated = false;
+						if (currentPub.value.url && !this.plugin.settings.publicationUrl) {
+							this.plugin.settings.publicationUrl = currentPub.value.url;
+							this.updateBaseUrlUI(currentPub.value.url);
+							updated = true;
+						}
+						const name = currentPub.value.name || "";
+						if (this.plugin.settings.publicationName !== name) {
+							this.plugin.settings.publicationName = name;
+							updated = true;
+						}
+						
+						if (updated) {
+							this.plugin.saveSettings();
+						}
+					}
 				}
 
 				dropdown.onChange(async (value) => {
@@ -174,6 +235,16 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 					}
 					newPubWrapper.style.display = "none";
 					this.plugin.settings.publicationUri = value;
+
+					const selectedPub = publications.find(p => p.uri === value);
+					if (selectedPub) {
+						if (selectedPub.value.url) {
+							this.plugin.settings.publicationUrl = selectedPub.value.url;
+							this.updateBaseUrlUI(selectedPub.value.url);
+						}
+						this.plugin.settings.publicationName = selectedPub.value.name || "";
+					}
+
 					await this.plugin.saveSettings();
 				});
 			});
@@ -201,6 +272,7 @@ export class StandardSiteSettingTab extends PluginSettingTab {
 								name: newName.trim(),
 							});
 							this.plugin.settings.publicationUri = ref.uri;
+							this.plugin.settings.publicationName = newName.trim();
 							await this.plugin.saveSettings();
 							this.display(); // re-render settings
 						} catch (e: any) {
