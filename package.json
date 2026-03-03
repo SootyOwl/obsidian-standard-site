@@ -8,7 +8,8 @@
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"test": "vitest run",
-		"test:watch": "vitest"
+		"test:watch": "vitest",
+		"viewer:dev": "wrangler pages dev viewer"
 	},
 	"keywords": [
 		"obsidian",
@@ -29,6 +30,7 @@
 		"@types/node": "^25.3.2",
 		"esbuild": "^0.27.3",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.18"
+		"vitest": "^4.0.18",
+		"wrangler": "^4.69.0"
 	}
 }
