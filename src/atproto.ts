@@ -35,12 +35,13 @@ export class StandardSiteClient {
 
 	async login(identifier: string, password: string): Promise<void> {
 		const { did, pds } = await resolveIdentity(identifier);
-		this._did = did;
-		this._pdsUrl = pds;
 
 		this.manager = new CredentialManager({ service: pds });
 		this.rpc = new Client({ handler: this.manager });
 		await this.manager.login({ identifier, password });
+
+		this._did = did;
+		this._pdsUrl = pds;
 	}
 
 	async createPublication(record: PublicationRecord): Promise<RecordRef> {
