@@ -1,9 +1,11 @@
 import {
 	LocalActorResolver,
-	XrpcHandleResolver,
 	CompositeDidDocumentResolver,
 	PlcDidDocumentResolver,
 	WebDidDocumentResolver,
+	WellKnownHandleResolver,
+	DohJsonHandleResolver,
+	CompositeHandleResolver,
 } from "@atcute/identity-resolver";
 import type { Did, Handle } from "@atcute/lexicons/syntax";
 
@@ -12,9 +14,14 @@ export interface ResolvedIdentity {
 	pds: string;
 }
 
-export async function resolveIdentity(handle: string): Promise<ResolvedIdentity> {
+export async function resolveIdentity(identifier: string): Promise<ResolvedIdentity> {
 	const resolver = new LocalActorResolver({
-		handleResolver: new XrpcHandleResolver({ serviceUrl: "https://public.api.bsky.app" }),
+		handleResolver: new CompositeHandleResolver({
+			methods: {
+				dns: new DohJsonHandleResolver({ dohUrl: 'https://mozilla.cloudflare-dns.com/dns-query' }),
+				http: new WellKnownHandleResolver(),
+			},
+		}),
 		didDocumentResolver: new CompositeDidDocumentResolver({
 			methods: {
 				plc: new PlcDidDocumentResolver(),
@@ -22,6 +29,6 @@ export async function resolveIdentity(handle: string): Promise<ResolvedIdentity>
 			},
 		}),
 	});
-	const result = await resolver.resolve(handle as Handle);
+	const result = await resolver.resolve(identifier as Handle | Did);
 	return { did: result.did, pds: result.pds };
 }
