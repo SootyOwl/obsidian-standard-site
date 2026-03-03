@@ -105,8 +105,9 @@ export default class StandardSitePlugin extends Plugin {
 			throw new Error("Please configure your ATProto handle and app password in settings");
 		}
 		if (!this.client) {
-			this.client = new StandardSiteClient();
-			await this.client.login(this.settings.handle, this.settings.appPassword);
+			let client = new StandardSiteClient();
+			await client.login(this.settings.handle, this.settings.appPassword, this.settings.pdsUrl);
+			this.client = client;  // assign after successful login to avoid caching a failed client
 		}
 		return this.client;
 	}

@@ -1,4 +1,4 @@
-import { Client, CredentialManager, ok } from "@atcute/client";
+import { Client, CredentialManager, ok, ClientResponseError } from "@atcute/client";
 import type { } from "@atcute/atproto";
 import type { } from "@atcute/standard-site";
 import type { Did } from "@atcute/lexicons/syntax";
@@ -22,7 +22,7 @@ export class StandardSiteClient {
 	private _did!: Did;
 	private _pdsUrl!: string;
 
-	get did(): string {
+	get did(): Did {
 		if (!this._did) {
 			throw new Error("StandardSiteClient is not logged in. Call login() before accessing did.");
 		}
@@ -33,21 +33,36 @@ export class StandardSiteClient {
 		return this._pdsUrl;
 	}
 
-	async login(identifier: string, password: string): Promise<void> {
-		const { did, pds } = await resolveIdentity(identifier);
+	async login(identifier: string, password: string, overridePdsUrl?: string): Promise<void> {
+		let pdsToUse = overridePdsUrl;
+		let didToUse = "";
+		
+		if (pdsToUse) {
+			// When overridePdsUrl is provided, we skip dynamic identity resolution.
+			// Note: We need a DID to instantiate queries. We will temporarily use the identifier 
+			// if it resembles a DID, otherwise we might fetch the did via a quick network call,
+			// or rely on CredentialManager mapping. For simplicity, if override is given,
+			// we assume the CredentialManager will give back the DID after login.
+		} else {
+			const { did, pds } = await resolveIdentity(identifier);
+			didToUse = did;
+			pdsToUse = pds;
+		}
 
-		this.manager = new CredentialManager({ service: pds });
+		if (!pdsToUse) throw new Error("Could not determine PDS URL.");
+
+		this.manager = new CredentialManager({ service: pdsToUse });
 		this.rpc = new Client({ handler: this.manager });
-		await this.manager.login({ identifier, password });
+		const loginResult = await this.manager.login({ identifier, password });
 
-		this._did = did;
-		this._pdsUrl = pds;
+		this._did = (didToUse || loginResult.did) as Did;
+		this._pdsUrl = pdsToUse;
 	}
 
 	async createPublication(record: PublicationRecord): Promise<RecordRef> {
 		const { uri, cid } = await ok(this.rpc.post("com.atproto.repo.createRecord", {
 			input: {
-				repo: this._did,
+				repo: this.did,
 				collection: "site.standard.publication",
 				record: record as unknown as Record<string, unknown>,
 			},
@@ -58,7 +73,7 @@ export class StandardSiteClient {
 	async updatePublication(rkey: string, record: PublicationRecord): Promise<RecordRef> {
 		const { uri, cid } = await ok(this.rpc.post("com.atproto.repo.putRecord", {
 			input: {
-				repo: this._did,
+				repo: this.did,
 				collection: "site.standard.publication",
 				rkey,
 				record: record as unknown as Record<string, unknown>,
@@ -71,14 +86,14 @@ export class StandardSiteClient {
 		try {
 			const data = await ok(this.rpc.get("com.atproto.repo.getRecord", {
 				params: {
-					repo: this._did,
+					repo: this.did,
 					collection: "site.standard.publication",
 					rkey,
 				},
 			}));
 			return { uri: data.uri, cid: data.cid ?? "", value: data.value };
 		} catch (err: any) {
-			if (err?.name === "ClientResponseError" && (err.status === 404 || err.error === "RecordNotFound" || err.error === "InvalidRequest" || err.message?.includes("Record not found"))) {
+			if (err instanceof ClientResponseError && (err.status === 404 || err.error === "RecordNotFound" || err.error === "InvalidRequest" || err.message?.includes("Record not found"))) {
 				return null;
 			}
 			throw err;
@@ -92,7 +107,7 @@ export class StandardSiteClient {
 		do {
 			const data = await ok(this.rpc.get("com.atproto.repo.listRecords", {
 				params: {
-					repo: this._did,
+					repo: this.did,
 					collection: "site.standard.publication",
 					limit: 100,
 					cursor,
@@ -114,7 +129,7 @@ export class StandardSiteClient {
 	async createDocument(record: DocumentRecord): Promise<RecordRef> {
 		const { uri, cid } = await ok(this.rpc.post("com.atproto.repo.createRecord", {
 			input: {
-				repo: this._did,
+				repo: this.did,
 				collection: "site.standard.document",
 				record: record as unknown as Record<string, unknown>,
 			},
@@ -125,7 +140,7 @@ export class StandardSiteClient {
 	async updateDocument(rkey: string, record: DocumentRecord): Promise<RecordRef> {
 		const { uri, cid } = await ok(this.rpc.post("com.atproto.repo.putRecord", {
 			input: {
-				repo: this._did,
+				repo: this.did,
 				collection: "site.standard.document",
 				rkey,
 				record: record as unknown as Record<string, unknown>,
@@ -137,7 +152,7 @@ export class StandardSiteClient {
 	async deleteDocument(rkey: string): Promise<void> {
 		await ok(this.rpc.post("com.atproto.repo.deleteRecord", {
 			input: {
-				repo: this._did,
+				repo: this.did,
 				collection: "site.standard.document",
 				rkey,
 			},
@@ -148,7 +163,7 @@ export class StandardSiteClient {
 		try {
 			const data = await ok(this.rpc.get("com.atproto.repo.getRecord", {
 				params: {
-					repo: this._did,
+					repo: this.did,
 					collection: "site.standard.document",
 					rkey,
 				},
@@ -169,7 +184,7 @@ export class StandardSiteClient {
 		do {
 			const data = await ok(this.rpc.get("com.atproto.repo.listRecords", {
 				params: {
-					repo: this._did,
+					repo: this.did,
 					collection: "site.standard.document",
 					limit: 100,
 					cursor,
