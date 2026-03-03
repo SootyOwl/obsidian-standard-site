@@ -93,7 +93,7 @@ export class StandardSiteClient {
 			}));
 			return { uri: data.uri, cid: data.cid ?? "", value: data.value };
 		} catch (err: any) {
-			if (err instanceof ClientResponseError && (err.status === 404 || err.error === "RecordNotFound" || err.error === "InvalidRequest" || err.message?.includes("Record not found"))) {
+			if (err?.name === "ClientResponseError" && (err.status === 404 || err.error === "RecordNotFound" || err.error === "InvalidRequest" || err.message?.includes("Record not found"))) {
 				return null;
 			}
 			throw err;
