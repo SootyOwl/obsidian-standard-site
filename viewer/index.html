@@ -195,6 +195,29 @@ body {
 }
 .post-content th { font-weight: 600; }
 
+/* Footnotes */
+.post-content .footnotes {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.9em;
+  color: var(--text-secondary);
+}
+.post-content .footnotes ol { margin-left: 1.5rem; }
+.post-content .footnotes li { margin-bottom: 0.5rem; }
+.post-content .footnotes li p { margin-bottom: 0.25rem; }
+.post-content [data-footnote-ref] { text-decoration: none; }
+.post-content [data-footnote-backref] { text-decoration: none; }
+.post-content .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
 /* Cover image */
 .cover-image {
   width: 100%;
@@ -297,6 +320,7 @@ body {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@17.0.0/lib/marked.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked-footnote@1.4.0/dist/index.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
 <script>
 // ── Marked setup ───────────────────────────────────────────────
@@ -314,6 +338,7 @@ renderer.link = function({ href, title, tokens }) {
   return `<a${hrefAttr}${titleAttr}>${text}</a>`;
 };
 marked.setOptions({ gfm: true, breaks: false, renderer });
+marked.use(markedFootnote());
 
 // ── Utilities ──────────────────────────────────────────────────
 

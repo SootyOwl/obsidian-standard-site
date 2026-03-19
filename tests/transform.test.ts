@@ -61,6 +61,10 @@ describe("transformObsidianMarkdown", () => {
 			const input = "[text](https://example.com)";
 			expect(transformObsidianMarkdown(input, noopResolver).text).toBe(input);
 		});
+		it("preserves GFM footnotes", () => {
+			const input = "Text with a footnote[^1].\n\n[^1]: Footnote content.";
+			expect(transformObsidianMarkdown(input, noopResolver).text).toBe(input);
+		});
 	});
 
 	describe("wikilinks", () => {
